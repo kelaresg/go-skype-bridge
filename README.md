@@ -9,7 +9,7 @@ This matrix-skype bridge is based on [mautrix-whatsapp](https://github.com/tulir
 * create group conversation
 * private conversation
 * group conversation
-* kick/invite(group)
+* kick/invite/leave/join(group)
 * generate invitation link(group)
 * quote message(Circular references may have some bugs)
 * mention someone(message)
