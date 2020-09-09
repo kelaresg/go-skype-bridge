@@ -540,7 +540,6 @@ func (portal *Portal) UpdateMetadata(user *User) bool {
 			if key == user.JID {
 				continue
 			}
-			fmt.Println("CreateMatrixRoom3.1: ", key)
 			if contact, ok := user.Conn.Store.Contacts[key]; ok {
 				portalName += contact.DisplayName
 			}
@@ -1468,10 +1467,9 @@ func (portal *Portal) HandleContactMessageSkype(source *User, message skype.Reso
 
 	content := &event.MessageEventContent{
 		Body:    fmt.Sprintf("%s\n%s", contactMessage.C.F, contactMessage.C.S),
-		MsgType: event.MsgText,
+		MsgType: "m.contact",//event.MsgText,
 	}
 
-	//portal.SetReply(content, message.ContextInfo)
 	portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
