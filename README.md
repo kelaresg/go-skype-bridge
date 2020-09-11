@@ -28,5 +28,3 @@ This matrix-skype bridge is based on [mautrix-whatsapp](https://github.com/tulir
 > implementation of the [sigalor/whatsapp-web-reveng](https://github.com/sigalor/whatsapp-web-reveng) project.
 
 > ### [Wiki](https://github.com/tulir/mautrix-whatsapp/wiki)
-
-> ### [Features & Roadmap](https://github.com/tulir/mautrix-whatsapp/blob/master/ROADMAP.md)
