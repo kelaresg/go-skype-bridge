@@ -1,6 +1,6 @@
 # matrix-skype
 
-This matrix-skype bridge is based on [mautrix-whatsapp](https://github.com/tulir/mautrix-whatsapp),so the installation and usage methods are very similar to mautrix-whatsapp(matrix-skype currently does not support docker installation)
+matrix-skype is a library for bridging matrix and skype, about matrix, please refer to [matrix.org](http://matrix.org/).
 
 ## functions are available 
 `The following functions are available in both directions without special instructions）`
@@ -19,8 +19,10 @@ This matrix-skype bridge is based on [mautrix-whatsapp](https://github.com/tulir
 * user name/avatar change
 * Typing status
 
+The skype api lib of matrix-skype is [go-skypeapi]https://github.com/kelaresg/go-skypeapi.
 
-## Below is the readme of mautrix-whatsapp
+This matrix-skype bridge is based on [mautrix-whatsapp](https://github.com/tulir/mautrix-whatsapp),so the installation and usage methods are very similar to mautrix-whatsapp(matrix-skype currently does not support docker installation)
+
 > # mautrix-whatsapp
 > A Matrix-WhatsApp puppeting bridge based on the [Rhymen/go-whatsapp](https://github.com/Rhymen/go-whatsapp)
 > implementation of the [sigalor/whatsapp-web-reveng](https://github.com/sigalor/whatsapp-web-reveng) project.
