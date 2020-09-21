@@ -275,9 +275,10 @@ func (ext *ExtendedConn) HandleGroupShare(groupJid string) (err error, link stri
 
 func (ext *ExtendedConn) HandleGroupKick(groupJid string, numbers[]string) (err error) {
 	for _, number := range numbers{
-		err = ext.Conn.RemoveMember(groupJid, number)
-		if err != nil {
-			fmt.Printf("%s Handle kick err", err)
+		if err == nil {
+			err = ext.Conn.RemoveMember(groupJid, number)
+		} else {
+			_ = ext.Conn.RemoveMember(groupJid, number)
 		}
 	}
 	return

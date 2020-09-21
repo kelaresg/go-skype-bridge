@@ -19,7 +19,6 @@ import (
 )
 
 func (bridge *Bridge) ParsePuppetMXID(mxid id.UserID) (types.SkypeID, bool) {
-	fmt.Println("ParsePuppetMXID: ", bridge.Config.Bridge.FormatUsername("(.*)"))
 	userIDRegex, err := regexp.Compile(fmt.Sprintf("^@%s:%s$",
 		bridge.Config.Bridge.FormatUsername("(.*)"),
 		bridge.Config.Homeserver.Domain))
@@ -31,8 +30,15 @@ func (bridge *Bridge) ParsePuppetMXID(mxid id.UserID) (types.SkypeID, bool) {
 	if match == nil || len(match) != 2 {
 		return "", false
 	}
-
-	jid := types.SkypeID(match[1] + whatsappExt.NewUserSuffix)
+	realId := match[1]
+	cond1 := "8-live-"
+	cond2 := "8-"
+	if strings.HasPrefix(realId, cond1) {
+		realId = strings.Replace(realId, cond1, "8:live:", 1)
+	} else if strings.HasPrefix(realId, cond2){
+		realId = strings.Replace(realId, cond2, "8:", 1)
+	}
+	jid := types.SkypeID(realId + skypeExt.NewUserSuffix)
 	return jid, true
 }
 

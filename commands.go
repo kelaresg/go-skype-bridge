@@ -900,7 +900,7 @@ func (handler *CommandHandler) CommandInvite(ce *CommandEvent) {
 
 	userNumbers := strings.Split(ce.Args[1], ",")
 
-	if strings.HasSuffix(conversationId, whatsappExt.NewUserSuffix) {
+	if strings.HasSuffix(conversationId, skypeExt.NewUserSuffix) {
 		ce.Reply("**Usage:** `invite <group JID> <international phone number>,...`")
 		return
 	}

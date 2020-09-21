@@ -1015,6 +1015,43 @@ var (
 	StateHalfShotBridgeInfo = event.Type{Type: "uk.half-shot.bridge", Class: event.StateEventType}
 )
 
+func (portal *Portal) getBridgeInfo() (string, BridgeInfoContent) {
+	bridgeInfo := BridgeInfoContent{
+		BridgeBot: portal.bridge.Bot.UserID,
+		Creator:   portal.MainIntent().UserID,
+		Protocol: BridgeInfoSection{
+			ID:          "skype",
+			DisplayName: "Skype",
+			AvatarURL:   id.ContentURIString(portal.bridge.Config.AppService.Bot.Avatar),
+			ExternalURL: "https://www.skype.com/",
+		},
+		Channel: BridgeInfoSection{
+			ID:          portal.Key.JID,
+			DisplayName: portal.Name,
+			AvatarURL:   portal.AvatarURL.CUString(),
+		},
+	}
+	bridgeInfoStateKey := fmt.Sprintf("net.maunium.whatsapp://whatsapp/%s", portal.Key.JID)
+	return bridgeInfoStateKey, bridgeInfo
+}
+
+func (portal *Portal) UpdateBridgeInfo() {
+	if len(portal.MXID) == 0 {
+		portal.log.Debugln("Not updating bridge info: no Matrix room created")
+		return
+	}
+	portal.log.Debugln("Updating bridge info...")
+	stateKey, content := portal.getBridgeInfo()
+	_, err := portal.MainIntent().SendStateEvent(portal.MXID, StateBridgeInfo, stateKey, content)
+	if err != nil {
+		portal.log.Warnln("Failed to update m.bridge:", err)
+	}
+	_, err = portal.MainIntent().SendStateEvent(portal.MXID, StateHalfShotBridgeInfo, stateKey, content)
+	if err != nil {
+		portal.log.Warnln("Failed to update uk.half-shot.bridge:", err)
+	}
+}
+
 func (portal *Portal) CreateMatrixRoom(user *User) error {
 	portal.roomCreateLock.Lock()
 	defer portal.roomCreateLock.Unlock()
@@ -1024,9 +1061,6 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 
 	intent := portal.MainIntent()
 	if err := intent.EnsureRegistered(); err != nil {
-		fmt.Println()
-		fmt.Println("CreateMatrixRoom0: ", err)
-		fmt.Println()
 		return err
 	}
 
@@ -1035,9 +1069,6 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 
 	var metadata *skypeExt.GroupInfo
 	if portal.IsPrivateChat() {
-		fmt.Println()
-		fmt.Println("CreateMatrixRoom1: ")
-		fmt.Println()
 		puppet := portal.bridge.GetPuppetByJID(portal.Key.JID+skypeExt.NewUserSuffix)
 		if portal.bridge.Config.Bridge.PrivateChatPortalMeta {
 			portal.Name = puppet.Displayname
@@ -1048,15 +1079,9 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 		}
 		portal.Topic = "skype private chat"
 	} else if portal.IsStatusBroadcastRoom() {
-		fmt.Println()
-		fmt.Println("CreateMatrixRoom2: ")
-		fmt.Println()
 		portal.Name = "skype Status Broadcast"
 		portal.Topic = "skype status updates from your contacts"
 	} else {
-		fmt.Println()
-		fmt.Println("CreateMatrixRoom3: ")
-		fmt.Println()
 		var err error
 		metadata, err = user.Conn.GetGroupMetaData(portal.Key.JID)
 		if err == nil {
@@ -1068,7 +1093,6 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 					if key == user.JID {
 						continue
 					}
-					fmt.Println("CreateMatrixRoom3.1: ", key)
 					if contact, ok := user.Conn.Store.Contacts[key]; ok {
 						if len(portalName) > 0 {
 							portalName = portalName + ", " + contact.DisplayName
@@ -2355,6 +2379,35 @@ func (portal *Portal) Delete() {
 	portal.bridge.portalsLock.Unlock()
 }
 
+func (portal *Portal) GetMatrixUsers() ([]id.UserID, error) {
+	members, err := portal.MainIntent().JoinedMembers(portal.MXID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get member list")
+	}
+	var users []id.UserID
+	for userID := range members.Joined {
+		_, isPuppet := portal.bridge.ParsePuppetMXID(userID)
+		if !isPuppet && userID != portal.bridge.Bot.UserID {
+			users = append(users, userID)
+		}
+	}
+	return users, nil
+}
+
+func (portal *Portal) CleanupIfEmpty() {
+	users, err := portal.GetMatrixUsers()
+	if err != nil {
+		portal.log.Errorfln("Failed to get Matrix user list to determine if portal needs to be cleaned up: %v", err)
+		return
+	}
+
+	if len(users) == 0 {
+		portal.log.Infoln("Room seems to be empty, cleaning up...")
+		portal.Delete()
+		portal.Cleanup(false)
+	}
+}
+
 func (portal *Portal) Cleanup(puppetsOnly bool) {
 	if len(portal.MXID) == 0 {
 		return
@@ -2401,9 +2454,45 @@ func (portal *Portal) HandleMatrixLeave(sender *User) {
 		portal.Delete()
 		portal.Cleanup(false)
 		return
+	} else {
+		// TODO should we somehow deduplicate this call if this leave was sent by the bridge?
+		err := sender.Conn.HandleGroupLeave(portal.Key.JID)
+		if err != nil {
+			portal.log.Errorfln("Failed to leave group as %s: %v", sender.MXID, err)
+			return
+		}
+		//portal.log.Infoln("Leave response:", <-resp)
+		portal.CleanupIfEmpty()
 	}
 }
 
-func (portal *Portal) HandleMatrixKick(sender *User, event *event.Event) {
-	// TODO
+func (portal *Portal) HandleMatrixKick(sender *User, evt *event.Event) {
+	number, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
+	puppet := portal.bridge.GetPuppetByMXID(id.UserID(evt.GetStateKey()))
+	fmt.Println("HandleMatrixKick", puppet)
+	if puppet != nil {
+		number = strings.Replace(number, skypeExt.NewUserSuffix, "", 1)
+		err := sender.Conn.HandleGroupKick(portal.Key.JID, []string{number})
+		if err != nil {
+			portal.log.Errorfln("Failed to kick %s from group as %s: %v", puppet.JID, sender.MXID, err)
+			return
+		}
+		//portal.log.Infoln("Kick %s response: %s", puppet.JID, <-resp)
+	}
+}
+
+func (portal *Portal) HandleMatrixInvite(sender *User, evt *event.Event) {
+	number, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
+	puppet := portal.bridge.GetPuppetByMXID(id.UserID(evt.GetStateKey()))
+	fmt.Println("HandleMatrixInvite", puppet)
+	if puppet != nil {
+		number = strings.Replace(number, "8:", "", 1)
+		number = strings.Replace(number, skypeExt.NewUserSuffix, "", 1)
+		err := sender.Conn.HandleGroupInvite(portal.Key.JID, []string{number})
+		if err != nil {
+			portal.log.Errorfln("Failed to add %s to group as %s: %v", puppet.JID, sender.MXID, err)
+			return
+		}
+		//portal.log.Infoln("Add %s response: %s", puppet.JID, <-resp)
+	}
 }
