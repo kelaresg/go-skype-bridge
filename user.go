@@ -399,7 +399,7 @@ func (user *User) Login(ce *CommandEvent, name string, password string) {
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
 	user.addToJIDMap()
 	//user.PostLogin()
-	ce.User.Conn.GetConversations("")
+	ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
 }
 func loopPresence(user *User)  {
 Loop:
@@ -571,8 +571,18 @@ func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll b
 			if chat.Properties.ConversationStatus != "Accepted" && len(chat.ThreadProperties.Lastjoinat) < 1 {
 				continue
 			}
-			// user.log.Warnfln("Non-integer last message time in %s: %s", chat.Id, t)
-			//continue
+		}
+		// Filter calllogs conversation
+		if chat.Id == "48:calllogs" {
+			continue
+		}
+		// Filter conversations that have not sent messages
+		if chat.LastMessage.Id == "" {
+			continue
+		}
+		// 'Lastleaveat' value means that you have left the current conversation
+		if len(chat.ThreadProperties.Lastleaveat) > 0 {
+			continue
 		}
 		ts := uint64(t.UnixNano())
 		cid, _ := chat.Id.(string)

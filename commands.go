@@ -484,7 +484,7 @@ func (handler *CommandHandler) CommandSync(ce *CommandEvent) {
 		ce.Reply("Failed to contacts chat list (see logs for details)")
 	}
 	ce.Reply("Syncing conversations...")
-	err = ce.User.Conn.GetConversations("")
+	err = ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
 	if err != nil {
 		user.log.Errorln("Error get conversations:", err)
 		ce.Reply("Failed to conversations list (see logs for details)")
@@ -625,7 +625,7 @@ func (handler *CommandHandler) CommandList(ce *CommandEvent) {
 			return
 		}
 	} else {
-		err = ce.User.Conn.GetConversations("")
+		err = ce.User.Conn.GetConversations("", handler.bridge.Config.Bridge.InitialChatSync)
 		if err != nil {
 			ce.Reply("Get conversations error")
 			return
@@ -669,7 +669,7 @@ func (handler *CommandHandler) CommandOpen(ce *CommandEvent) {
 		ce.Reply("That looks like a user ID. Did you mean `pm %s`?", jid[:len(jid)-len(whatsappExt.NewUserSuffix)])
 		return
 	}
-	ce.User.Conn.GetConversations("")
+	ce.User.Conn.GetConversations("", handler.bridge.Config.Bridge.InitialChatSync)
 	fmt.Println("user.Conn.Store.Chats: ", user.Conn.Store.Chats)
 	chat, ok := user.Conn.Store.Chats[jid]
 	if !ok {
@@ -923,7 +923,7 @@ func (handler *CommandHandler) CommandInvite(ce *CommandEvent) {
 	fmt.Println("user.Conn.Store.Chats", user.Conn.Store.Contacts)
 	if !ok {
 		//user.Conn
-		err := ce.User.Conn.GetConversations("")
+		err := ce.User.Conn.GetConversations("", handler.bridge.Config.Bridge.InitialChatSync)
 		//time.Sleep(5 * time.Second)
 		if err != nil {
 			fmt.Println(err)

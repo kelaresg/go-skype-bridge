@@ -620,6 +620,10 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 	} else {
 		fmt.Println("SyncSkype ensureUserInvited", portal.MXID)
 		portal.ensureUserInvited(user)
+		rep, err := portal.MainIntent().SetPowerLevel(portal.MXID, user.MXID, 100)
+		if err != nil {
+			portal.log.Warnfln("SyncSkype: SetPowerLevel err: ", err, rep)
+		}
 	}
 
 	if portal.IsPrivateChat() {
@@ -680,7 +684,7 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 func (portal *Portal) GetBasePowerLevels() *event.PowerLevelsEventContent {
 	anyone := 0
 	nope := 99
-	invite := 99
+	invite := 50
 	if portal.bridge.Config.Bridge.AllowUserInvite {
 		invite = 0
 	}
