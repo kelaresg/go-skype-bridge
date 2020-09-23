@@ -901,55 +901,26 @@ func (handler *CommandHandler) CommandInvite(ce *CommandEvent) {
 	userNumbers := strings.Split(ce.Args[1], ",")
 
 	if strings.HasSuffix(conversationId, skypeExt.NewUserSuffix) {
-		ce.Reply("**Usage:** `invite <group JID> <international phone number>,...`")
+		ce.Reply("**Usage:** `invite <group JID> <contact id>,...`")
 		return
 	}
 
-	for i, number := range userNumbers {
-		//
-		number = strings.Replace(number, "8:", "", 1)
-		userNumbers[i] = number // + whatsappExt.NewUserSuffix
-	}
-	fmt.Println("sign in invite function")
-	fmt.Printf("%+v \n", user)
-	fmt.Printf("%+v \n", userNumbers)
-	fmt.Printf("%+v \n", conversationId)
-	//jidStr := strings.Split(jid, "@s.skype.net")
-	//fmt.Println(jidStr)
-	//jid = jidStr[0]
-	//contact, ok := user.Conn.Store.Contacts[jid]
-	group, ok := user.Conn.Store.Chats[conversationId]
-	fmt.Println("group first : ", group)
-	fmt.Println("user.Conn.Store.Chats", user.Conn.Store.Contacts)
+	_, ok := user.Conn.Store.Chats[conversationId]
 	if !ok {
 		//user.Conn
 		err := ce.User.Conn.GetConversations("", handler.bridge.Config.Bridge.InitialChatSync)
 		//time.Sleep(5 * time.Second)
 		if err != nil {
-			fmt.Println(err)
 			ce.Reply("get conversations failed. Try syncing contacts with `sync` first.")
 		} else {
-			group, ok = user.Conn.Store.Chats[conversationId]
+			_, ok = user.Conn.Store.Chats[conversationId]
 			if !ok {
 				ce.Reply("Group JID not found in chats. Try syncing groups with `sync` first.")
 				return
 			}
 		}
 	}
-	fmt.Println("group", group)
-	fmt.Println("GetConversations", user.Conn.Store.Contacts)
 	handler.log.Debugln("GetConversations", conversationId, "for", user)
-
-	//portal := user.bridge.GetPortalByJID(database.GroupPortalKey(conversationId))
-	//fmt.Printf("portal %+v : ", portal)
-	//if len(portal.MXID) > 0 {
-	//	//portaFl.Sync(user, contact)
-	//	ce.Reply("Portal room synced.")
-	//} else {
-	//	//portal.Sync(user, contact)
-	//	//ce.Reply("Portal room created.")
-	//}
-	//
 	handler.log.Debugln("Inviting", userNumbers, "to", conversationId)
 	err := user.Conn.HandleGroupInvite(conversationId, userNumbers)
 	if err != nil {
@@ -957,16 +928,6 @@ func (handler *CommandHandler) CommandInvite(ce *CommandEvent) {
 	} else {
 		ce.Reply("Group invitation sent.\nIf the member fails to join the group, please check your permissions or command parameters")
 	}
-	//time.Sleep(time.Duration(3)*time.Second)
-	//ce.Reply("Syncing room puppet...")
-	//chatMap := make(map[string]whatsapp.Chat)
-	//for _, chat := range user.Conn.Store.Chats {
-	//	if chat.Jid == jid {
-	//		chatMap[chat.Jid]= chat
-	//	}
-	//}
-	//user.syncPortals(chatMap, false)
-	//ce.Reply("Syncing room puppet completed")
 }
 
 const cmdKickHelp = `kick <_group ID_> <_contact Id>,... - Remove members from the group.`
@@ -1196,7 +1157,7 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 	members = skype.Members{}
 	for _, memberId := range inputArr {
 		members.Members = append(members.Members, skype.Member{
-			Id:   "8:" + memberId,
+			Id:   memberId,
 			Role: "Admin",
 		})
 	}

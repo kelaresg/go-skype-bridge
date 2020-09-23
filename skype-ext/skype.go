@@ -230,7 +230,7 @@ func (ext *ExtendedConn) HandleGroupInvite(groupJid string, numbers[]string) (er
 	members = skype.Members{}
 	for _, memberId := range numbers {
 		members.Members = append(members.Members, skype.Member{
-			Id: "8:"+memberId,
+			Id: memberId,
 			Role: "Admin",
 		})
 	}
