@@ -1087,6 +1087,14 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 		go portal.membershipAdd(cmd.Content)
 	case skypeExt.ChatMemberDelete:
 		go portal.membershipRemove(cmd.Content)
+	case "":
+		if skypeExt.ChatActionType(cmd.Type) == skypeExt.ChatActionThread {
+			if len(cmd.ETag) > 0 &&  len(cmd.Properties.Capabilities) < 1{
+				portal.Delete()
+				portal.Cleanup(false)
+			}
+		}
+
 	//case skypeExt.ChatActionAddTopic:
 	//	go portal.UpdateTopic(cmd.Data.AddTopic.Topic, cmd.Data.SenderJID)
 	//case skypeExt.ChatActionRemoveTopic:

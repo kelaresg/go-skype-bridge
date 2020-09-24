@@ -49,6 +49,7 @@ const (
 	ChatActionAdd         ChatActionType = "add"
 	ChatActionIntroduce   ChatActionType = "introduce"
 	ChatActionCreate      ChatActionType = "create"
+	ChatActionThread      ChatActionType = "Thread"
 )
 
 const (

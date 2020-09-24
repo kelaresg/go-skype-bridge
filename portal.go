@@ -1127,7 +1127,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 	// content.Users[user.MXID] = 100
 	//}
 	// When creating a room, make user self the highest level of authority
-	content.Users[user.MXID] = 100
+	content.Users[user.MXID] = 99
 	initialState := []*event.Event{{
 		Type: event.StatePowerLevels,
 		Content: event.Content{
