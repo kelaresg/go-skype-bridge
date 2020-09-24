@@ -28,6 +28,7 @@ func NewPortalKey(jid, receiver types.SkypeID) PortalKey {
 	if strings.HasSuffix(jid, skypeExt.GroupSuffix) {
 		receiver = jid
 	}
+	jid = strings.Replace(jid, skypeExt.NewUserSuffix, "", 1)
 	return PortalKey{
 		JID:      jid,
 		Receiver: receiver,
