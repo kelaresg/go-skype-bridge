@@ -285,13 +285,7 @@ func (ext *ExtendedConn) HandleGroupKick(groupJid string, numbers[]string) (err 
 }
 
 func (ext *ExtendedConn) HandleGroupCreate(numbers skype.Members) (err error)  {
-	//var parts []string
-	//parts = append(parts, numbers...)
-	err = ext.Conn.CreateConversationGroup(numbers)
-	//if err != nil {
-	//	fmt.Printf("%s HandleGroupCreate err", err)
-	//}
-	return
+	return ext.Conn.CreateConversationGroup(numbers)
 }
 
 func (ext *ExtendedConn) HandleGroupLeave(groupJid string) (err error)  {

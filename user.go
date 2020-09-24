@@ -1077,16 +1077,14 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 		}
 		go portal.UpdateAvatar(user, avatar)
 	case skypeExt.ChatMemberAdd:
-		fmt.Println("portal.MXID")
-		fmt.Println(portal.MXID)
-		fmt.Println(user)
+		user.log.Debugfln("chat member add")
 		if len(portal.MXID) == 0 {
 			err := portal.CreateMatrixRoom(user)
 			if err != nil {
 				fmt.Println("create room failed")
 			}
 		}
-		go portal.membershipAdd(user, cmd.Jid)
+		go portal.membershipAdd(cmd.Content)
 	case skypeExt.ChatMemberDelete:
 		go portal.membershipRemove(cmd.Content)
 	//case skypeExt.ChatActionAddTopic:

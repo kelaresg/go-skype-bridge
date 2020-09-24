@@ -752,50 +752,33 @@ func (portal *Portal) ChangeAdminStatus(jids []string, setAdmin bool) {
 //}
 
 func (portal *Portal) membershipRemove(content string) {
-	xmlFormat := skype.XmlContent{}
+	xmlFormat := skype.XmlDeleteMember{}
 	err := xml.Unmarshal([]byte(content), &xmlFormat)
+	for _, target := range xmlFormat.Targets {
+		member := portal.bridge.GetPuppetByJID(target)
 
-	member := portal.bridge.GetPuppetByJID(xmlFormat.Target)
-
-	memberMaxid := strings.Replace(string(member.MXID), "@skype&8:", "@skype&8-", 1)
-	_, err = portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{
-		UserID: id.UserID(memberMaxid),
-	})
-	if err != nil {
-		portal.log.Errorln("Error %v member from whatsapp:", err)
-	}
-	//for _, chat := range user.Conn.Store.Chats {
-	//	group := portal.bridge.GetPuppetByJID(chat.Id.(string))
-	//	fmt.Println("member")
-	//	fmt.Println(group)
-	//	fmt.Println("用户信息：")
-	//	fmt.Println(chat.Id.(string))
-	//
-	//	if group == nil {
-	//		portal.log.Errorln("%s is not exist", jid)
-	//		continue
-	//	}
-	//	if group.JID == jid {
-	//		_, err := portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{
-	//			UserID: group.MXID,
-	//		})
-	//		if err != nil {
-	//			portal.log.Errorln("Error %v member from whatsapp:", err)
-	//		}
-	//	}
-	//}
-}
-
-func (portal *Portal) membershipAdd(user *User, jid string) {
-	chatMap := make(map[string]skype.Conversation)
-	for _, chat := range user.Conn.Store.Chats {
-		if chat.Id == jid {
-			cid, _ := chat.Id.(string)
-			chatMap[cid] = chat
+		memberMaxid := strings.Replace(string(member.MXID), "@skype&8:", "@skype&8-", 1)
+		_, err = portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{
+			UserID: id.UserID(memberMaxid),
+		})
+		if err != nil {
+			portal.log.Errorln("Error %v member from whatsapp:", err)
 		}
 	}
-	fmt.Println("membershipAddzsl:", chatMap)
-	user.syncPortals(chatMap, false)
+}
+
+func (portal *Portal) membershipAdd(content string) {
+	xmlFormat := skype.XmlAddMember{}
+	err := xml.Unmarshal([]byte(content), &xmlFormat)
+
+	for _, target := range xmlFormat.Targets {
+		puppet := portal.bridge.GetPuppetByJID(target)
+		fmt.Println("membershipAdd puppet jid", target)
+		err = puppet.IntentFor(portal).EnsureJoined(portal.MXID)
+		if err != nil {
+			portal.log.Errorln("Error %v joined member from skype:", err)
+		}
+	}
 }
 
 func (portal *Portal) membershipCreate(user *User, cmd skypeExt.ChatUpdate) {

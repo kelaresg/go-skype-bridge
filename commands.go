@@ -1151,9 +1151,7 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 
 	handler.log.Debugln("Create Group", topic, "with", members)
 	err := user.Conn.HandleGroupCreate(members)
-
 	inputArr := strings.Split(ce.Args[1], ",")
-	inputArr = inputArr[1:]
 	members = skype.Members{}
 	for _, memberId := range inputArr {
 		members.Members = append(members.Members, skype.Member{
@@ -1161,7 +1159,10 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 			Role: "Admin",
 		})
 	}
-	err = user.Conn.AddMember(members, "")
+	conversationId, ok := <-user.Conn.CreateChan
+	if ok {
+		err = user.Conn.AddMember(members, conversationId)
+	}
 	if err != nil {
 		ce.Reply("Please confirm that parameters is correct.")
 	} else {
