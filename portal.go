@@ -620,9 +620,19 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 	} else {
 		fmt.Println("SyncSkype ensureUserInvited", portal.MXID)
 		portal.ensureUserInvited(user)
-		rep, err := portal.MainIntent().SetPowerLevel(portal.MXID, user.MXID, 100)
+		rep, err := portal.MainIntent().SetPowerLevel(portal.MXID, user.MXID, 95)
 		if err != nil {
 			portal.log.Warnfln("SyncSkype: SetPowerLevel err: ", err, rep)
+		}
+
+		preUserIds,_ :=  portal.GetMatrixUsers()
+		for _,userId := range preUserIds {
+			if user.MXID != userId {
+				err := portal.tryKickUser(userId, portal.MainIntent())
+				if err != nil {
+					portal.log.Errorln("Failed to try kick user:", err)
+				}
+			}
 		}
 	}
 
@@ -683,7 +693,7 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 
 func (portal *Portal) GetBasePowerLevels() *event.PowerLevelsEventContent {
 	anyone := 0
-	nope := 99
+	nope := 95
 	invite := 50
 	if portal.bridge.Config.Bridge.AllowUserInvite {
 		invite = 0
@@ -1127,7 +1137,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 	// content.Users[user.MXID] = 100
 	//}
 	// When creating a room, make user self the highest level of authority
-	content.Users[user.MXID] = 99
+	content.Users[user.MXID] = 95
 	initialState := []*event.Event{{
 		Type: event.StatePowerLevels,
 		Content: event.Content{
@@ -1506,19 +1516,6 @@ func (portal *Portal) sendMediaBridgeFailureSkype(source *User, intent *appservi
 	}
 }
 
-func (portal *Portal) sendMediaBridgeFailure(source *User, intent *appservice.IntentAPI, info whatsapp.MessageInfo, downloadErr error) {
-	portal.log.Errorfln("Failed to download media for %s: %v", info.Id, downloadErr)
-	resp, err := portal.sendMessage(intent, event.EventMessage, &event.MessageEventContent{
-		MsgType: event.MsgNotice,
-		Body:    "Failed to bridge media",
-	}, int64(info.Timestamp*1000))
-	if err != nil {
-		portal.log.Errorfln("Failed to send media download error message for %s: %v", info.Id, err)
-	} else {
-		portal.finishHandling(source, info.Source, resp.EventID)
-	}
-}
-
 func (portal *Portal) encryptFile(data []byte, mimeType string) ([]byte, string, *event.EncryptedFileInfo) {
 	if !portal.Encrypted {
 		return data, mimeType, nil
@@ -1530,6 +1527,17 @@ func (portal *Portal) encryptFile(data []byte, mimeType string) ([]byte, string,
 	}
 	return file.Encrypt(data), "application/octet-stream", file
 
+}
+
+func (portal *Portal) tryKickUser(userID id.UserID, intent *appservice.IntentAPI) error {
+	_, err := intent.KickUser(portal.MXID, &mautrix.ReqKickUser{UserID: userID})
+	if err != nil {
+		httpErr, ok := err.(mautrix.HTTPError)
+		if ok && httpErr.RespError != nil && httpErr.RespError.ErrCode == "M_FORBIDDEN" {
+			_, err = portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{UserID: userID})
+		}
+	}
+	return err
 }
 
 func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *skype.Conn, mediaType string) (data []byte, mediaMessage *skype.MediaMessageContent, err error), mediaType string, thumbnail []byte, info skype.Resource, sendAsSticker bool) {

@@ -361,17 +361,16 @@ func (user *User) loginQrChannel(ce *CommandEvent, qrChan <-chan string, eventID
 	}
 }
 
-func (user *User) Login(ce *CommandEvent, name string, password string) {
+func (user *User) Login(ce *CommandEvent, name string, password string) (err error) {
 	if user.contactsPresence == nil {
 		user.contactsPresence = make(map[string]*skypeExt.Presence)
 	}
-	session, err := user.Conn.Login(name, password)
+	err = user.Conn.Login(name, password)
 	if err != nil {
 		user.log.Errorln("Failed to login:", err)
-		ce.Reply("Please confirm that your account password is entered correctly")
-		return
+		ce.Reply(err.Error())
+		return err
 	}
-	fmt.Println("user.MXID", user.MXID)
 	ce.Reply("Successfully logged in")
 
 	// subscribe basic
@@ -381,7 +380,6 @@ func (user *User) Login(ce *CommandEvent, name string, password string) {
 	if err == nil{
 		var userIds []string
 		for _, contact := range user.Conn.Store.Contacts {
-			//fmt.Println(contact.PersonId)
 			if strings.Index(contact.PersonId, "28:") > -1 {
 				continue
 			}
@@ -389,24 +387,19 @@ func (user *User) Login(ce *CommandEvent, name string, password string) {
 			userIds = append(userIds, userId)
 		}
 		ce.User.Conn.SubscribeUsers(userIds)
-		//fmt.Println("Login user0: ", user.JID)
 		go loopPresence(user)
 	}
 	go user.Conn.Poll()
 
 	user.ConnectionErrors = 0
-	user.SetSession(&session)
+	user.SetSession(user.Conn.LoginInfo)
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
 	user.addToJIDMap()
-	//user.PostLogin()
 	ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
+	return
 }
 func loopPresence(user *User)  {
-Loop:
-	for i := 0; i <= 1000; i++ {
-		if i > 1000 {
-			goto Loop
-		}
+	for {
 		for cid, contact := range user.contactsPresence {
 			puppet := user.bridge.GetPuppetByJID(cid)
 			_ = puppet.DefaultIntent().SetPresence(event.Presence(strings.ToLower(contact.Availability)))

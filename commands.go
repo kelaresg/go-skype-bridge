@@ -239,8 +239,10 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 		ce.User.log.Debugln("Connect() returned false, assuming error was logged elsewhere and canceling login.")
 		return
 	}
-	ce.User.Login(ce, ce.Args[0], ce.Args[1])
-	syncAll(ce.User, true)
+	err := ce.User.Login(ce, ce.Args[0], ce.Args[1])
+	if err == nil {
+		syncAll(ce.User, true)
+	}
 }
 
 const cmdLogoutHelp = `logout - Logout from WhatsApp`
