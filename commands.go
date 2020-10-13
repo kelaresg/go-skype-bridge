@@ -113,8 +113,8 @@ func (handler *CommandHandler) CommandMux(ce *CommandEvent) {
 	//	handler.CommandDevTest(ce)
 	//case "set-pl":
 	//	handler.CommandSetPowerLevel(ce)
-	//case "logout":
-	//	handler.CommandLogout(ce)
+	case "logout":
+		handler.CommandLogout(ce)
 	case "login-matrix", "sync", "list", "open", "pm", "invite", "kick", "leave", "join", "create", "share":
 		if !ce.User.HasSession() {
 			ce.Reply("You are not logged in. Use the `login` command to log into WhatsApp.")
@@ -245,8 +245,21 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 	}
 }
 
-const cmdLogoutHelp = `logout - Logout from WhatsApp`
-
+const cmdLogoutHelp = `logout - Logout from Skype`
+func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
+	//ce.User.Conn.Conn.LogoutChan <- 1
+	ce.User.Conn.LoggedIn = false
+	ce.User.Conn.LoginInfo = &skype.Session{
+		SkypeToken:           "",
+		SkypeExpires:         "",
+		RegistrationToken:    "",
+		RegistrationTokenStr: "",
+		RegistrationExpires:  "",
+		LocationHost:         "",
+		EndpointId:           "",
+	}
+	ce.Reply("Logged out successfully.")
+}
 // CommandLogout handles !logout command
 //func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 //	if ce.User.Session == nil {
@@ -446,7 +459,7 @@ func (handler *CommandHandler) CommandHelp(ce *CommandEvent) {
 	ce.Reply("* " + strings.Join([]string{
 		cmdPrefix + cmdHelpHelp,
 		cmdPrefix + cmdLoginHelp,
-		//cmdPrefix + cmdLogoutHelp,
+		cmdPrefix + cmdLogoutHelp,
 		//cmdPrefix + cmdDeleteSessionHelp,
 		//cmdPrefix + cmdReconnectHelp,
 		//cmdPrefix + cmdDisconnectHelp,

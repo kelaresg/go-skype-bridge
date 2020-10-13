@@ -373,9 +373,7 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	}
 	ce.Reply("Successfully logged in")
 
-	// subscribe basic
-	user.Conn.Subscribes()
-	// subscribe conta
+	user.Conn.Subscribes() // subscribe basic event
 	err = user.Conn.Conn.ContactList(user.Conn.UserProfile.Username)
 	if err == nil{
 		var userIds []string
@@ -395,62 +393,21 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	user.SetSession(user.Conn.LoginInfo)
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
 	user.addToJIDMap()
-	ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
+	_ = ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
 	return
 }
-func loopPresence(user *User)  {
+
+func loopPresence(user *User) {
 	for {
+		if user.Conn.LoggedIn == false {
+			break
+		}
 		for cid, contact := range user.contactsPresence {
 			puppet := user.bridge.GetPuppetByJID(cid)
 			_ = puppet.DefaultIntent().SetPresence(event.Presence(strings.ToLower(contact.Availability)))
 		}
 		time.Sleep(39 * time.Second)
 	}
-}
-func (user *User) Login1(ce *CommandEvent) {
-	//qrChan := make(chan string, 3)
-	//eventIDChan := make(chan id.EventID, 1)
-	//go user.loginQrChannel(ce, qrChan, eventIDChan)
-	//session, err := user.Conn.LoginWithRetry(qrChan, user.bridge.Config.Bridge.LoginQRRegenCount)
-	//qrChan <- "stop"
-	//if err != nil {
-	//	var eventID id.EventID
-	//	select {
-	//	case eventID = <-eventIDChan:
-	//	default:
-	//	}
-	//	reply := event.MessageEventContent{
-	//		MsgType: event.MsgText,
-	//	}
-	//	if err == whatsapp.ErrAlreadyLoggedIn {
-	//		reply.Body = "You're already logged in"
-	//	} else if err == whatsapp.ErrLoginInProgress {
-	//		reply.Body = "You have a login in progress already."
-	//	} else if err == whatsapp.ErrLoginTimedOut {
-	//		reply.Body = "QR code scan timed out. Please try again."
-	//	} else {
-	//		user.log.Warnln("Failed to log in:", err)
-	//		reply.Body = fmt.Sprintf("Unknown error while logging in: %v", err)
-	//	}
-	//	msg := reply
-	//	if eventID != "" {
-	//		msg.NewContent = &reply
-	//		msg.RelatesTo = &event.RelatesTo{
-	//			Type:    event.RelReplace,
-	//			EventID: eventID,
-	//		}
-	//	}
-	//	_, _ = ce.Bot.SendMessageEvent(ce.RoomID, event.EventMessage, &msg)
-	//	return
-	//}
-	//// TODO there's a bit of duplication between this and the provisioning API login method
-	////      Also between the two logout methods (commands.go and provisioning.go)
-	//user.ConnectionErrors = 0
-	//user.JID = strings.Replace(user.Conn.Info.Wid, whatsappExt.OldUserSuffix, whatsappExt.NewUserSuffix, 1)
-	//user.addToJIDMap()
-	//user.SetSession(&session)
-	//ce.Reply("Successfully logged in, synchronizing chats...")
-	//user.PostLogin()
 }
 
 type Chat struct {
