@@ -99,8 +99,8 @@ func (handler *CommandHandler) CommandMux(ce *CommandEvent) {
 	//	handler.CommandReconnect(ce)
 	//case "disconnect":
 	//	handler.CommandDisconnect(ce)
-	//case "ping":
-	//	handler.CommandPing(ce)
+	case "ping":
+		handler.CommandPing(ce)
 	//case "delete-connection":
 	//	handler.CommandDeleteConnection(ce)
 	//case "delete-session":
@@ -421,31 +421,23 @@ const cmdDisconnectHelp = `disconnect - Disconnect from WhatsApp (without loggin
 
 const cmdPingHelp = `ping - Check your connection to WhatsApp.`
 
-//func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
-//	if ce.User.Session == nil {
-//		if ce.User.IsLoginInProgress() {
-//			ce.Reply("You're not logged into WhatsApp, but there's a login in progress.")
-//		} else {
-//			ce.Reply("You're not logged into WhatsApp.")
-//		}
-//	} else if ce.User.Conn == nil {
-//		ce.Reply("You don't have a WhatsApp connection.")
-//	} else if ok, err := ce.User.Conn.AdminTest(); err != nil {
-//		if ce.User.IsLoginInProgress() {
-//			ce.Reply("Connection not OK: %v, but login in progress", err)
-//		} else {
-//			ce.Reply("Connection not OK: %v", err)
-//		}
-//	} else if !ok {
-//		if ce.User.IsLoginInProgress() {
-//			ce.Reply("Connection not OK, but no error received and login in progress")
-//		} else {
-//			ce.Reply("Connection not OK, but no error received")
-//		}
-//	} else {
-//		ce.Reply("Connection to WhatsApp OK")
-//	}
-//}
+func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
+	if ce.User.Session == nil || ce.User.Session.SkypeToken == "" {
+		if ce.User.IsLoginInProgress() {
+			ce.Reply("You're not logged into Skype, but there's a login in progress.")
+		} else {
+			ce.Reply("You're not logged into Skype.")
+		}
+	} else if ce.User.Conn.LoggedIn == false {
+		ce.Reply("You're not logged into Skype.")
+	} else {
+		username := ce.User.Conn.UserProfile.FirstName
+		if len(ce.User.Conn.UserProfile.LastName) > 0 {
+			username = username + ce.User.Conn.UserProfile.LastName
+		}
+		ce.Reply("You are logged in as @" + username)
+	}
+}
 
 const cmdHelpHelp = `help - Prints this help`
 
@@ -464,7 +456,7 @@ func (handler *CommandHandler) CommandHelp(ce *CommandEvent) {
 		//cmdPrefix + cmdReconnectHelp,
 		//cmdPrefix + cmdDisconnectHelp,
 		//cmdPrefix + cmdDeleteConnectionHelp,
-		//cmdPrefix + cmdPingHelp,
+		cmdPrefix + cmdPingHelp,
 		//cmdPrefix + cmdLoginMatrixHelp,
 		//cmdPrefix + cmdLogoutMatrixHelp,
 		cmdPrefix + cmdSyncHelp,
