@@ -305,8 +305,7 @@ func (user *User) IsConnected() bool {
 }
 
 func (user *User) IsLoginInProgress() bool {
-	//return user.Conn != nil && user.Conn.IsLoginInProgress()
-	return false
+	return user.Conn != nil && user.Conn.IsLoginInProgress()
 }
 
 func (user *User) loginQrChannel(ce *CommandEvent, qrChan <-chan string, eventIDChan chan<- id.EventID) {
@@ -371,7 +370,11 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 		ce.Reply(err.Error())
 		return err
 	}
-	ce.Reply("Successfully logged in")
+	username := user.Conn.UserProfile.FirstName
+	if len(user.Conn.UserProfile.LastName) > 0 {
+		username = username + user.Conn.UserProfile.LastName
+	}
+	ce.Reply("Successfully logged in as @" + username)
 
 	user.Conn.Subscribes() // subscribe basic event
 	err = user.Conn.Conn.ContactList(user.Conn.UserProfile.Username)
