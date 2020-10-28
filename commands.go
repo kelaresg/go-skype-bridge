@@ -117,7 +117,7 @@ func (handler *CommandHandler) CommandMux(ce *CommandEvent) {
 		handler.CommandLogout(ce)
 	case "login-matrix", "sync", "list", "open", "pm", "invite", "kick", "leave", "join", "create", "share":
 		if !ce.User.HasSession() {
-			ce.Reply("You are not logged in. Use the `login` command to log into WhatsApp.")
+			ce.Reply("You're not logged in. Use the `login` command to log into Skype.")
 			return
 		}
 
@@ -435,7 +435,7 @@ func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 		if len(ce.User.Conn.UserProfile.LastName) > 0 {
 			username = username + ce.User.Conn.UserProfile.LastName
 		}
-		ce.Reply("You are logged in as @" + username)
+		ce.Reply("You're logged in as @" + username)
 	}
 }
 

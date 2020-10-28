@@ -237,7 +237,7 @@ func (user *User) SetSession(session *skype.Session) {
 //		return false
 //	}
 //	user.Conn = whatsappExt.ExtendConn(conn)
-//	_ = user.Conn.SetClientName("matrix-skype bridge", "mx-wa", WAVersion)
+//	_ = user.Conn.SetClientName("matrix-skype bridge", "mx-wa", SkypeVersion)
 //	user.log.Debugln("WhatsApp connection successful")
 //	user.Conn.AddHandler(user)
 //	return user.RestoreSession()
@@ -263,7 +263,7 @@ func (user *User) Connect(evenIfNoSession bool) bool {
 		return false
 	}
 	user.Conn = skypeExt.ExtendConn(conn)
-	//_ = user.Conn.SetClientName("matrix-skype bridge", "mx-wa", WAVersion)
+	//_ = user.Conn.SetClientName("matrix-skype bridge", "mx-wa", SkypeVersion)
 	user.log.Debugln("skype connection successful")
 	user.Conn.AddHandler(user)
 	return user.RestoreSession()
@@ -388,7 +388,7 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 			userIds = append(userIds, userId)
 		}
 		ce.User.Conn.SubscribeUsers(userIds)
-		go loopPresence(user)
+		go loopPresence(ce, user)
 	}
 	go user.Conn.Poll()
 
@@ -400,9 +400,10 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	return
 }
 
-func loopPresence(user *User) {
+func loopPresence(ce *CommandEvent, user *User) {
 	for {
 		if user.Conn.LoggedIn == false {
+			ce.Reply("Session expired")
 			break
 		}
 		for cid, contact := range user.contactsPresence {

@@ -379,40 +379,19 @@ func (mx *MatrixHandler) HandleEncrypted(evt *event.Event) {
 }
 
 func (mx *MatrixHandler) HandleMessage(evt *event.Event) {
-	fmt.Println()
-	fmt.Printf("HandleMessage : %+v", evt)
-	fmt.Println()
 	if mx.shouldIgnoreEvent(evt) {
 		return
 	}
 
 	user := mx.bridge.GetUserByMXID(evt.Sender)
-	fmt.Println()
-	fmt.Printf("HandleMessage user: %+v", user)
-	fmt.Println()
 	content := evt.Content.AsMessage()
 	if user.Whitelisted && content.MsgType == event.MsgText {
 		commandPrefix := mx.bridge.Config.Bridge.CommandPrefix
-		fmt.Println()
-		fmt.Printf("HandleMessage commandPrefix: %+v", commandPrefix)
-		fmt.Println()
 		hasCommandPrefix := strings.HasPrefix(content.Body, commandPrefix)
 		if hasCommandPrefix {
 			content.Body = strings.TrimLeft(content.Body[len(commandPrefix):], " ")
 		}
-		fmt.Println()
-		fmt.Printf("HandleMessage hasCommandPrefix: %+v", hasCommandPrefix)
-		fmt.Println()
-		fmt.Println()
-		fmt.Printf("HandleMessage  evt.RoomID0: %+v", evt.RoomID)
-		fmt.Println()
-		fmt.Println()
-		fmt.Printf("HandleMessage  user.ManagementRoom: %+v", user.ManagementRoom)
-		fmt.Println()
 		if hasCommandPrefix || evt.RoomID == user.ManagementRoom {
-			fmt.Println()
-			fmt.Printf("HandleMessage commandPrefix: %+v", commandPrefix)
-			fmt.Println()
 			mx.cmd.Handle(evt.RoomID, user, content.Body)
 			return
 		}

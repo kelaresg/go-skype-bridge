@@ -29,7 +29,7 @@ var (
 	URL  = "unknown"
 	// This is changed when making a release
 	Version   = "0.1.1"
-	WAVersion = ""
+	SkypeVersion = ""
 	// These are filled at build time with the -X linker flag
 	Tag       = "unknown"
 	Commit    = "unknown"
@@ -43,7 +43,7 @@ func init() {
 	if Tag != Version && !strings.HasSuffix(Version, "+dev") {
 		Version += "+dev"
 	}
-	WAVersion = strings.FieldsFunc(Version, func(r rune) bool { return r == '-' || r == '+' })[0]
+	SkypeVersion = strings.FieldsFunc(Version, func(r rune) bool { return r == '-' || r == '+' })[0]
 }
 
 var configPath = flag.MakeFull("c", "config", "The path to your config file.", "config.yaml").String()
