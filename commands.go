@@ -247,6 +247,9 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 
 const cmdLogoutHelp = `logout - Logout from Skype`
 func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
+	if ce.User.Conn == nil {
+		return
+	}
 	//ce.User.Conn.Conn.LogoutChan <- 1
 	ce.User.Conn.LoggedIn = false
 	ce.User.Conn.LoginInfo = &skype.Session{
