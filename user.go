@@ -21,7 +21,6 @@ import (
 	waProto "github.com/Rhymen/go-whatsapp/binary/proto"
 
 	"maunium.net/go/mautrix/event"
-	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 
 	"github.com/kelaresg/matrix-skype/database"
@@ -969,17 +968,18 @@ func (user *User) HandleCommand(cmd skypeExt.Command) {
 			go portal.UpdateAvatar(user, cmd.ProfilePicInfo)
 		}
 	case skypeExt.CommandDisconnect:
-		var msg string
-		if cmd.Kind == "replaced" {
-			msg = "\u26a0 Your WhatsApp connection was closed by the server because you opened another WhatsApp Web client.\n\n" +
-				"Use the `reconnect` command to disconnect the other client and resume bridging."
-		} else {
-			user.log.Warnln("Unknown kind of disconnect:", string(cmd.Raw))
-			msg = fmt.Sprintf("\u26a0 Your WhatsApp connection was closed by the server (reason code: %s).\n\n"+
-				"Use the `reconnect` command to reconnect.", cmd.Kind)
-		}
-		user.cleanDisconnection = true
-		go user.bridge.Bot.SendMessageEvent(user.GetManagementRoom(), event.EventMessage, format.RenderMarkdown(msg, true, false))
+		//var msg string
+		//if cmd.Kind == "replaced" {
+		//	msg = "\u26a0 Your Skype connection was closed by the server because you opened another Skype Web client.\n\n" +
+		//		"Use the `reconnect` command to disconnect the other client and resume bridging."
+		//} else {
+		//	user.log.Warnln("Unknown kind of disconnect:", string(cmd.Raw))
+		//	msg = fmt.Sprintf("\u26a0 Your Skype connection was closed by the server (reason code: %s).\n\n"+
+		//		"Use the `reconnect` command to reconnect.", cmd.Kind)
+		//}
+		//msg = "can not disconnect"
+		//user.cleanDisconnection = true
+		//go user.bridge.Bot.SendMessageEvent(user.GetManagementRoom(), event.EventMessage, format.RenderMarkdown(msg, true, false))
 	}
 }
 

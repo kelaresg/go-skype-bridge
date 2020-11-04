@@ -272,7 +272,8 @@ func (puppet *Puppet) UpdateName(source *User, contact skype.Contact) bool {
 
 func (puppet *Puppet) updatePortalMeta(meta func(portal *Portal)) {
 	if puppet.bridge.Config.Bridge.PrivateChatPortalMeta {
-		for _, portal := range puppet.bridge.GetAllPortalsByJID(puppet.JID) {
+		jid := strings.Replace(puppet.JID, whatsappExt.NewUserSuffix, "", 1)
+		for _, portal := range puppet.bridge.GetAllPortalsByJID(jid) {
 			meta(portal)
 		}
 	}
@@ -306,7 +307,6 @@ func (puppet *Puppet) updatePortalName() {
 }
 
 func (puppet *Puppet) Sync(source *User, contact skype.Contact) {
-	fmt.Println("sync")
 	err := puppet.DefaultIntent().EnsureRegistered()
 	if err != nil {
 		puppet.log.Errorln("Failed to ensure registered:", err)
