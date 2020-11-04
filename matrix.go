@@ -153,7 +153,7 @@ func (mx *MatrixHandler) handlePrivatePortal(roomID id.RoomID, inviter *User, pu
 		return
 	}
 	intent := puppet.DefaultIntent()
-	_, _ = intent.SendNotice(roomID, "You already have a private chat portal with me at %s")
+	_, _ = intent.SendNotice(roomID, fmt.Sprintf("You already have a private chat portal with me at %s", roomID))
 	mx.log.Debugln("Leaving private chat room", roomID, "as", puppet.MXID, "after accepting invite from", inviter.MXID, "as we already have chat with the user")
 	_, _ = intent.LeaveRoom(roomID)
 }
@@ -263,6 +263,9 @@ func (mx *MatrixHandler) HandleMembership(evt *event.Event) {
 		return
 	}
 	isSelf := id.UserID(evt.GetStateKey()) == evt.Sender
+	fmt.Println("HandleMembership isSelf:", isSelf)
+	fmt.Println("HandleMembership id.UserID(evt.GetStateKey()):", id.UserID(evt.GetStateKey()))
+	fmt.Println("HandleMembership evt.Sender:", evt.Sender)
 	if content.Membership == event.MembershipLeave {
 		if id.UserID(evt.GetStateKey()) == evt.Sender {
 			if evt.Unsigned.PrevContent != nil {
