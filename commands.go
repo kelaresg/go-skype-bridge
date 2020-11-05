@@ -246,12 +246,18 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 }
 
 const cmdLogoutHelp = `logout - Logout from Skype`
+
 func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	if ce.User.Conn == nil {
 		return
 	}
-	//ce.User.Conn.Conn.LogoutChan <- 1
 	ce.User.Conn.LoggedIn = false
+	username := ""
+	password := ""
+	if ce.User.Conn.LoginInfo != nil {
+		username = ce.User.Conn.LoginInfo.Username
+		password = ce.User.Conn.LoginInfo.Password
+	}
 	ce.User.Conn.LoginInfo = &skype.Session{
 		SkypeToken:           "",
 		SkypeExpires:         "",
@@ -260,9 +266,24 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		RegistrationExpires:  "",
 		LocationHost:         "",
 		EndpointId:           "",
+		Username: username,
+		Password: password,
+	}
+	portals := ce.User.GetPortals()
+	leave := func(portal *Portal) {
+		if len(portal.MXID) > 0 {
+			_, _ = portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{
+				Reason: "Logout",
+				UserID: ce.User.MXID,
+			})
+		}
+	}
+	for _, portal := range portals {
+		leave(portal)
 	}
 	ce.Reply("Logged out successfully.")
 }
+
 // CommandLogout handles !logout command
 //func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 //	if ce.User.Session == nil {

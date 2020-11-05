@@ -148,7 +148,6 @@ func (user *User) GetPortals() []*Portal {
 	for i, key := range keys {
 		portal, ok := user.bridge.portalsByJID[key]
 		if !ok {
-			fmt.Println("loadDBPortal4")
 			portal = user.bridge.loadDBPortal(user.bridge.DB.Portal.GetByJID(key), &key)
 		}
 		portals[i] = portal

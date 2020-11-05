@@ -625,17 +625,17 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 			portal.log.Warnfln("SyncSkype: SetPowerLevel err: ", err, rep)
 		}
 
-		if portal.IsPrivateChat() {
-			preUserIds,_ :=  portal.GetMatrixUsers()
-			for _,userId := range preUserIds {
-				if user.MXID != userId {
-					err := portal.tryKickUser(userId, portal.MainIntent())
-					if err != nil {
-						portal.log.Errorln("Failed to try kick user:", err)
-					}
-				}
-			}
-		}
+		//if portal.IsPrivateChat() {
+		//	preUserIds,_ :=  portal.GetMatrixUsers()
+		//	for _,userId := range preUserIds {
+		//		if user.MXID != userId {
+		//			err := portal.tryKickUser(userId, portal.MainIntent())
+		//			if err != nil {
+		//				portal.log.Errorln("Failed to try kick user:", err)
+		//			}
+		//		}
+		//	}
+		//}
 	}
 
 	if portal.IsPrivateChat() {
