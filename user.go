@@ -1007,8 +1007,36 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 		topicContent := skype.ChatTopicContent{}
 		//把xml数据解析成bs对象
 		xml.Unmarshal([]byte(cmd.Content), &topicContent)
+		portalName := ""
+		noRoomTopic := false
+		names := strings.Split(cmd.ThreadTopic, ", ")
+		for _, name := range names {
+			key := "8:" + name + skypeExt.NewUserSuffix
+			if key == user.JID {
+				noRoomTopic = true
+			}
+		}
+		if noRoomTopic {
+			participants, _ := portal.GetPuppets()
+			for index, participant := range participants {
+				if *participant.DisplayName != user.Conn.LoginInfo.Username {
+					if len(portalName) == 0 {
+						portalName = *participant.DisplayName
+					} else {
+						if index > 5 {
+							portalName = portalName + ", ..."
+							break
+						} else {
+							portalName = *participant.DisplayName + ", " + portalName
+						}
+					}
+				}
+			}
+		} else {
+			portalName = cmd.ThreadTopic
+		}
 		cmd.SendId = topicContent.Initiator + skypeExt.NewUserSuffix
-		go portal.UpdateName(cmd.ThreadTopic, cmd.SendId)
+		go portal.UpdateName(portalName, cmd.SendId)
 	case skypeExt.ChatPictureUpdate:
 		topicContent := skype.ChatPictureContent{}
 		//把xml数据解析成bs对象

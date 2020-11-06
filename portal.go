@@ -533,19 +533,37 @@ func (portal *Portal) UpdateMetadata(user *User) bool {
 	}
 
 	portalName := ""
+	noRoomTopic := false
 	names := strings.Split(metadata.Name, ", ")
 	for _, name := range names {
-		if strings.Index(name, ":") > 0 {
-			key := "8:" + name + skypeExt.NewUserSuffix
-			if key == user.JID {
-				continue
-			}
-			if contact, ok := user.Conn.Store.Contacts[key]; ok {
-				portalName += contact.DisplayName
-			}
+		key := "8:" + name + skypeExt.NewUserSuffix
+		if key == user.JID {
+			noRoomTopic = true
 		}
 	}
-	if len(portalName) < 1 {
+	if noRoomTopic {
+		for index, participant := range metadata.Participants {
+			fmt.Println()
+			fmt.Printf("metadata.Participants1: %+v", participant)
+			fmt.Println()
+
+			if participant.JID == user.JID {
+				continue
+			}
+			if contact, ok := user.Conn.Store.Contacts[participant.JID]; ok {
+				if len(portalName) == 0 {
+					portalName = contact.DisplayName
+				} else {
+					if index > 5 {
+						portalName = portalName + ", ..."
+						break
+					} else {
+						portalName = portalName + ", " + contact.DisplayName
+					}
+				}
+			}
+		}
+	} else {
 		portalName = metadata.Name
 	}
 	// portal.Topic = ""
@@ -1085,25 +1103,36 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 		metadata, err = user.Conn.GetGroupMetaData(portal.Key.JID)
 		if err == nil {
 			portalName := ""
+			noRoomTopic := false
 			names := strings.Split(metadata.Name, ", ")
 			for _, name := range names {
-				if strings.Index(name, ":") > 0 {
-					key := "8:" + name + skypeExt.NewUserSuffix
-					if key == user.JID {
-						continue
-					}
-					if contact, ok := user.Conn.Store.Contacts[key]; ok {
-						if len(portalName) > 0 {
-							portalName = portalName + ", " + contact.DisplayName
-						} else {
-							portalName = contact.DisplayName
-						}
-					}
-				} else if name == "..." {
-					portalName = portalName + ", ..."
+				key := "8:" + name + skypeExt.NewUserSuffix
+				if key == user.JID {
+					noRoomTopic = true
 				}
 			}
-			if len(portalName) > 0 {
+			if noRoomTopic {
+				for index, participant := range metadata.Participants {
+					fmt.Println()
+					fmt.Printf("metadata.Participants2: %+v", participant)
+					fmt.Println()
+
+					if participant.JID == user.JID {
+						continue
+					}
+					if contact, ok := user.Conn.Store.Contacts[participant.JID]; ok {
+						if len(portalName) == 0 {
+							portalName = contact.DisplayName
+						} else {
+							if index > 5 {
+								portalName = portalName + ", ..."
+								break
+							} else {
+								portalName = portalName + ", " + contact.DisplayName
+							}
+						}
+					}
+				}
 				portal.Name = portalName
 			} else {
 				portal.Name = metadata.Name
@@ -2389,6 +2418,27 @@ func (portal *Portal) GetMatrixUsers() ([]id.UserID, error) {
 		}
 	}
 	return users, nil
+}
+
+func (portal *Portal) GetPuppets() ([]struct {
+	DisplayName *string `json:"display_name"`
+	AvatarURL   *string `json:"avatar_url"`
+}, error) {
+	members, err := portal.MainIntent().JoinedMembers(portal.MXID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get member list")
+	}
+	var puppets []struct {
+		DisplayName *string `json:"display_name"`
+		AvatarURL   *string `json:"avatar_url"`
+	}
+	for userID := range members.Joined {
+		_, isPuppet := portal.bridge.ParsePuppetMXID(userID)
+		if isPuppet && userID != portal.bridge.Bot.UserID {
+			puppets = append(puppets, members.Joined[userID])
+		}
+	}
+	return puppets, nil
 }
 
 func (portal *Portal) CleanupIfEmpty() {
