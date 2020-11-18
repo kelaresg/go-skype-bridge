@@ -7,6 +7,7 @@ import (
 	"maunium.net/go/mautrix"
 	"strconv"
 	"strings"
+	"time"
 
 	"maunium.net/go/maulogger/v2"
 
@@ -57,8 +58,12 @@ func (mx *MatrixHandler) HandleEncryption(evt *event.Event) {
 func (mx *MatrixHandler) joinAndCheckMembers(evt *event.Event, intent *appservice.IntentAPI) *mautrix.RespJoinedMembers {
 	resp, err := intent.JoinRoomByID(evt.RoomID)
 	if err != nil {
-		mx.log.Debugfln("Failed to join room %s as %s with invite from %s: %v", evt.RoomID, intent.UserID, evt.Sender, err)
-		return nil
+		time.Sleep(3 * time.Second)
+		resp, err = intent.JoinRoomByID(evt.RoomID)
+		if err != nil {
+			mx.log.Debugfln("Failed to join room %s as %s with invite from %s: %v", evt.RoomID, intent.UserID, evt.Sender, err)
+			return nil
+		}
 	}
 
 	members, err := intent.JoinedMembers(resp.RoomID)
