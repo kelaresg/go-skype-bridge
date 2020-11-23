@@ -58,11 +58,17 @@ func (mx *MatrixHandler) HandleEncryption(evt *event.Event) {
 func (mx *MatrixHandler) joinAndCheckMembers(evt *event.Event, intent *appservice.IntentAPI) *mautrix.RespJoinedMembers {
 	resp, err := intent.JoinRoomByID(evt.RoomID)
 	if err != nil {
-		time.Sleep(3 * time.Second)
+		mx.log.Debugfln("JoinRoomByID err, retry in 5 seconds", err)
+		time.Sleep(5 * time.Second)
 		resp, err = intent.JoinRoomByID(evt.RoomID)
 		if err != nil {
-			mx.log.Debugfln("Failed to join room %s as %s with invite from %s: %v", evt.RoomID, intent.UserID, evt.Sender, err)
-			return nil
+			mx.log.Debugfln("JoinRoomByID err, retry again in 5 seconds", err)
+			time.Sleep(5 * time.Second)
+			resp, err = intent.JoinRoomByID(evt.RoomID)
+			if err != nil {
+				mx.log.Debugfln("Failed to join room %s as %s with invite from %s: %v", evt.RoomID, intent.UserID, evt.Sender, err)
+				return nil
+			}
 		}
 	}
 
