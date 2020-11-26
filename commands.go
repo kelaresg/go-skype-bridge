@@ -443,7 +443,7 @@ const cmdDisconnectHelp = `disconnect - Disconnect from WhatsApp (without loggin
 //	ce.Reply("Successfully disconnected. Use the `reconnect` command to reconnect.")
 //}
 
-const cmdPingHelp = `ping - Check your connection to WhatsApp.`
+const cmdPingHelp = `ping - Check your connection to Skype.`
 
 func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 	if ce.User.Session == nil || ce.User.Session.SkypeToken == "" {

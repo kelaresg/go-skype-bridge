@@ -82,7 +82,6 @@ func (helper *CryptoHelper) Init() error {
 	helper.mach = crypto.NewOlmMachine(helper.client, logger, helper.store, stateStore)
 	helper.mach.AllowKeyShare = helper.allowKeyShare
 
-	helper.client.Logger = logger.int.Sub("Bot")
 	helper.client.Syncer = &cryptoSyncer{helper.mach}
 	helper.client.Store = &cryptoClientStore{helper.store}
 
@@ -114,6 +113,44 @@ func (helper *CryptoHelper) allowKeyShare(device *crypto.DeviceIdentity, info ev
 }
 
 func (helper *CryptoHelper) loginBot() (*mautrix.Client, error) {
+	deviceID := helper.store.FindDeviceID()
+	if len(deviceID) > 0 {
+		helper.log.Debugln("Found existing device ID for bot in database:", deviceID)
+	}
+	client, err := mautrix.NewClient(helper.bridge.AS.HomeserverURL, "", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize client: %w", err)
+	}
+	client.Logger = helper.baseLog.Sub("Bot")
+	flows, err := client.GetLoginFlows()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get supported login flows: %w", err)
+	}
+	if !flows.HasFlow(mautrix.AuthTypeAppservice) {
+		// TODO after synapse 1.22, turn this into an error
+		helper.log.Warnln("Encryption enabled in config, but homeserver does not advertise appservice login")
+		//return nil, fmt.Errorf("homeserver does not support appservice login")
+	}
+	// We set the API token to the AS token here to authenticate the appservice login
+	// It'll get overridden after the login
+	client.AccessToken = helper.bridge.AS.Registration.AppToken
+	resp, err := client.Login(&mautrix.ReqLogin{
+		Type:                     mautrix.AuthTypeAppservice,
+		Identifier:               mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: string(helper.bridge.AS.BotMXID())},
+		DeviceID:                 deviceID,
+		InitialDeviceDisplayName: "WhatsApp Bridge",
+		StoreCredentials:         true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to log in as bridge bot: %w", err)
+	}
+	if len(deviceID) == 0 {
+		helper.store.DeviceID = resp.DeviceID
+	}
+	return client, nil
+}
+
+func (helper *CryptoHelper) loginBotOld() (*mautrix.Client, error) {
 	deviceID := helper.store.FindDeviceID()
 	if len(deviceID) > 0 {
 		helper.log.Debugln("Found existing device ID for bot in database:", deviceID)

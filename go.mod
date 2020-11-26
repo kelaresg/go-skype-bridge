@@ -16,11 +16,11 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 	maunium.net/go/mauflag v1.0.0
 	maunium.net/go/maulogger/v2 v2.1.1
-	maunium.net/go/mautrix v0.7.2
+	maunium.net/go/mautrix v0.8.0-rc.4
 )
 
 replace github.com/Rhymen/go-whatsapp => github.com/tulir/go-whatsapp v0.2.8
 
-replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.7.3-0.20201106154702-3c2230569f1d
+replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201126070406-7b13ac473bcc
 
 replace github.com/kelaresg/go-skypeapi => /Users/yangguang/matrix/go-skypeapi-kelare
