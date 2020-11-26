@@ -20,7 +20,7 @@ matrix-skype is a library for bridging matrix and skype, about matrix, please re
 * Typing status
 
 The skype api lib of matrix-skype is [go-skypeapi](https://github.com/kelaresg/go-skypeapi).  
-Note: Use `go get github.com/kelaresg/go-skypeapi@{latest_commit_id}`, for now is: `go get github.com/kelaresg/go-skypeapi@807a3ad2ec5bdd8f768e701ae5914938ececc2bc`
+Note: Use `go get github.com/kelaresg/go-skypeapi@{latest_commit_id}`, for now is: `go get github.com/kelaresg/go-skypeapi@5517c72e321147c133403698608032106b98f50f`
 
 This matrix-skype bridge is based on [mautrix-whatsapp](https://github.com/tulir/mautrix-whatsapp),so the installation and usage methods are very similar to mautrix-whatsapp(matrix-skype currently does not support docker installation)
 
