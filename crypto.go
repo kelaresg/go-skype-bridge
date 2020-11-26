@@ -1,4 +1,17 @@
-// +build cgo
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+// +build cgo,!nocrypto
 
 package main
 
@@ -13,10 +26,11 @@ import (
 	"maunium.net/go/maulogger/v2"
 
 	"maunium.net/go/mautrix"
-	"github.com/kelaresg/matrix-skype/database"
 	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+
+	"github.com/kelaresg/matrix-skype/database"
 )
 
 var levelTrace = maulogger.Level{
@@ -52,6 +66,10 @@ func NewCryptoHelper(bridge *Bridge) Crypto {
 
 func (helper *CryptoHelper) Init() error {
 	helper.log.Debugln("Initializing end-to-bridge encryption...")
+
+	helper.store = database.NewSQLCryptoStore(helper.bridge.DB, helper.bridge.AS.BotMXID(),
+		fmt.Sprintf("@%s:%s", helper.bridge.Config.Bridge.FormatUsername("%"), helper.bridge.AS.HomeserverDomain))
+
 	var err error
 	helper.client, err = helper.loginBot()
 	if err != nil {
@@ -61,40 +79,102 @@ func (helper *CryptoHelper) Init() error {
 	helper.log.Debugln("Logged in as bridge bot with device ID", helper.client.DeviceID)
 	logger := &cryptoLogger{helper.baseLog}
 	stateStore := &cryptoStateStore{helper.bridge}
-	helper.store = database.NewSQLCryptoStore(helper.bridge.DB, helper.client.DeviceID)
-	helper.store.UserID = helper.client.UserID
-	helper.store.GhostIDFormat = fmt.Sprintf("@%s:%s", helper.bridge.Config.Bridge.FormatUsername("%"), helper.bridge.AS.HomeserverDomain)
 	helper.mach = crypto.NewOlmMachine(helper.client, logger, helper.store, stateStore)
+	helper.mach.AllowKeyShare = helper.allowKeyShare
 
-	helper.client.Logger = logger.int.Sub("Bot")
 	helper.client.Syncer = &cryptoSyncer{helper.mach}
 	helper.client.Store = &cryptoClientStore{helper.store}
 
 	return helper.mach.Load()
 }
 
+func (helper *CryptoHelper) allowKeyShare(device *crypto.DeviceIdentity, info event.RequestedKeyInfo) *crypto.KeyShareRejection {
+	cfg := helper.bridge.Config.Bridge.Encryption.KeySharing
+	if !cfg.Allow {
+		return &crypto.KeyShareRejectNoResponse
+	} else if device.Trust == crypto.TrustStateBlacklisted {
+		return &crypto.KeyShareRejectBlacklisted
+	} else if device.Trust == crypto.TrustStateVerified || !cfg.RequireVerification {
+		portal := helper.bridge.GetPortalByMXID(info.RoomID)
+		if portal == nil {
+			helper.log.Debugfln("Rejecting key request for %s from %s/%s: room is not a portal", info.SessionID, device.UserID, device.DeviceID)
+			return &crypto.KeyShareRejection{Code: event.RoomKeyWithheldUnavailable, Reason: "Requested room is not a portal room"}
+		}
+		user := helper.bridge.GetUserByMXID(device.UserID)
+		if !user.IsInPortal(portal.Key) {
+			helper.log.Debugfln("Rejecting key request for %s from %s/%s: user is not in portal", info.SessionID, device.UserID, device.DeviceID)
+			return &crypto.KeyShareRejection{Code: event.RoomKeyWithheldUnauthorized, Reason: "You're not in that portal"}
+		}
+		helper.log.Debugfln("Accepting key request for %s from %s/%s", info.SessionID, device.UserID, device.DeviceID)
+		return nil
+	} else {
+		return &crypto.KeyShareRejectUnverified
+	}
+}
+
 func (helper *CryptoHelper) loginBot() (*mautrix.Client, error) {
-	deviceID := helper.bridge.DB.FindDeviceID()
+	deviceID := helper.store.FindDeviceID()
+	if len(deviceID) > 0 {
+		helper.log.Debugln("Found existing device ID for bot in database:", deviceID)
+	}
+	client, err := mautrix.NewClient(helper.bridge.AS.HomeserverURL, "", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize client: %w", err)
+	}
+	client.Logger = helper.baseLog.Sub("Bot")
+	flows, err := client.GetLoginFlows()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get supported login flows: %w", err)
+	}
+	if !flows.HasFlow(mautrix.AuthTypeAppservice) {
+		// TODO after synapse 1.22, turn this into an error
+		helper.log.Warnln("Encryption enabled in config, but homeserver does not advertise appservice login")
+		//return nil, fmt.Errorf("homeserver does not support appservice login")
+	}
+	// We set the API token to the AS token here to authenticate the appservice login
+	// It'll get overridden after the login
+	client.AccessToken = helper.bridge.AS.Registration.AppToken
+	resp, err := client.Login(&mautrix.ReqLogin{
+		Type:                     mautrix.AuthTypeAppservice,
+		Identifier:               mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: string(helper.bridge.AS.BotMXID())},
+		DeviceID:                 deviceID,
+		InitialDeviceDisplayName: "WhatsApp Bridge",
+		StoreCredentials:         true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to log in as bridge bot: %w", err)
+	}
+	if len(deviceID) == 0 {
+		helper.store.DeviceID = resp.DeviceID
+	}
+	return client, nil
+}
+
+func (helper *CryptoHelper) loginBotOld() (*mautrix.Client, error) {
+	deviceID := helper.store.FindDeviceID()
 	if len(deviceID) > 0 {
 		helper.log.Debugln("Found existing device ID for bot in database:", deviceID)
 	}
 	mac := hmac.New(sha512.New, []byte(helper.bridge.Config.Bridge.LoginSharedSecret))
 	mac.Write([]byte(helper.bridge.AS.BotMXID()))
-	resp, err := helper.bridge.AS.BotClient().Login(&mautrix.ReqLogin{
-		Type:                     "m.login.password",
-		Identifier:               mautrix.UserIdentifier{Type: "m.id.user", User: string(helper.bridge.AS.BotMXID())},
+	client, err := mautrix.NewClient(helper.bridge.AS.HomeserverURL, "", "")
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Login(&mautrix.ReqLogin{
+		Type:                     mautrix.AuthTypePassword,
+		Identifier:               mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: string(helper.bridge.AS.BotMXID())},
 		Password:                 hex.EncodeToString(mac.Sum(nil)),
 		DeviceID:                 deviceID,
-		InitialDeviceDisplayName: "Skype Bridge",
+		InitialDeviceDisplayName: "WhatsApp Bridge",
+		StoreCredentials:         true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	client, err := mautrix.NewClient(helper.bridge.AS.HomeserverURL, helper.bridge.AS.BotMXID(), resp.AccessToken)
-	if err != nil {
-		return nil, err
+	if len(deviceID) == 0 {
+		helper.store.DeviceID = resp.DeviceID
 	}
-	client.DeviceID = resp.DeviceID
 	return client, nil
 }
 
@@ -115,7 +195,7 @@ func (helper *CryptoHelper) Decrypt(evt *event.Event) (*event.Event, error) {
 }
 
 func (helper *CryptoHelper) Encrypt(roomID id.RoomID, evtType event.Type, content event.Content) (*event.EncryptedEventContent, error) {
-	encrypted, err := helper.mach.EncryptMegolmEvent(roomID, evtType, content)
+	encrypted, err := helper.mach.EncryptMegolmEvent(roomID, evtType, &content)
 	if err != nil {
 		if err != crypto.SessionExpired && err != crypto.SessionNotShared && err != crypto.NoGroupSession {
 			return nil, err
@@ -129,7 +209,7 @@ func (helper *CryptoHelper) Encrypt(roomID id.RoomID, evtType event.Type, conten
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to share group session")
 		}
-		encrypted, err = helper.mach.EncryptMegolmEvent(roomID, evtType, content)
+		encrypted, err = helper.mach.EncryptMegolmEvent(roomID, evtType, &content)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to encrypt event after re-sharing group session")
 		}
@@ -213,6 +293,8 @@ type cryptoStateStore struct {
 	bridge *Bridge
 }
 
+var _ crypto.StateStore = (*cryptoStateStore)(nil)
+
 func (c *cryptoStateStore) IsEncrypted(id id.RoomID) bool {
 	portal := c.bridge.GetPortalByMXID(id)
 	if portal != nil {
@@ -223,4 +305,9 @@ func (c *cryptoStateStore) IsEncrypted(id id.RoomID) bool {
 
 func (c *cryptoStateStore) FindSharedRooms(id id.UserID) []id.RoomID {
 	return c.bridge.StateStore.FindSharedRooms(id)
+}
+
+func (c *cryptoStateStore) GetEncryptionEvent(id.RoomID) *event.EncryptionEventContent {
+	// TODO implement
+	return nil
 }

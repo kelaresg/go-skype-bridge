@@ -39,7 +39,7 @@ func NewFormatter(bridge *Bridge) *Formatter {
 			TabsToSpaces: 4,
 			Newline:      "\n",
 
-			PillConverter: func(mxid, eventID string) string {
+			PillConverter: func(mxid, eventID string, ctx format.Context) string {
 				if mxid[0] == '@' {
 					puppet := bridge.GetPuppetByMXID(id.UserID(mxid))
 					if puppet != nil {
@@ -48,19 +48,19 @@ func NewFormatter(bridge *Bridge) *Formatter {
 				}
 				return mxid
 			},
-			BoldConverter: func(text string) string {
+			BoldConverter: func(text string, _ format.Context) string {
 				return fmt.Sprintf("*%s*", text)
 			},
-			ItalicConverter: func(text string) string {
+			ItalicConverter: func(text string, _ format.Context) string {
 				return fmt.Sprintf("_%s_", text)
 			},
-			StrikethroughConverter: func(text string) string {
+			StrikethroughConverter: func(text string, _ format.Context) string {
 				return fmt.Sprintf("~%s~", text)
 			},
-			MonospaceConverter: func(text string) string {
+			MonospaceConverter: func(text string, _ format.Context) string {
 				return fmt.Sprintf("```%s```", text)
 			},
-			MonospaceBlockConverter: func(text, language string) string {
+			MonospaceBlockConverter: func(text, language string, _ format.Context) string {
 				return fmt.Sprintf("```%s```", text)
 			},
 		},
@@ -166,5 +166,6 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
 }
 
 func (formatter *Formatter) ParseMatrix(html string) string {
-	return formatter.matrixHTMLParser.Parse(html)
+	ctx := make(format.Context)
+	return formatter.matrixHTMLParser.Parse(html, ctx)
 }

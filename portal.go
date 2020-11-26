@@ -1483,7 +1483,7 @@ func (portal *Portal) HandleLocationMessageSkype(source *User, message skype.Res
 	longitude, _:= strconv.Atoi(locationMessage.Longitude)
 	geo := fmt.Sprintf("geo:%.6f,%.6f", float32(latitude)/1000000, float32(longitude)/1000000)
 	content := &event.MessageEventContent{
-		MsgType:       event.MsgText, //event.MsgLocation,
+		MsgType:       event.MsgText,
 		Body:          fmt.Sprintf("Location: <a href='%s'>%s</a>%s<br>", locationMessage.A.Href, locationMessage.Address, geo),
 		Format:        event.FormatHTML,
 		FormattedBody: fmt.Sprintf("Location: <a href='%s'>%s</a>%s<br>", locationMessage.A.Href, locationMessage.Address, geo),
@@ -1494,8 +1494,7 @@ func (portal *Portal) HandleLocationMessageSkype(source *User, message skype.Res
 	portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
-	t, _ := time.Parse(time.RFC3339,message.ComposeTime)
-	resp, err := portal.sendMessage(intent, event.EventMessage, content, t.Unix())
+	resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
 	if err != nil {
 		portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
 		return
@@ -1519,14 +1518,13 @@ func (portal *Portal) HandleContactMessageSkype(source *User, message skype.Reso
 
 	content := &event.MessageEventContent{
 		Body:    fmt.Sprintf("%s\n%s", contactMessage.C.F, contactMessage.C.S),
-		MsgType: "m.contact",//event.MsgText,
+		MsgType: event.MsgText,
 	}
 
 	portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
-	t, _ := time.Parse(time.RFC3339,message.ComposeTime)
-	resp, err := portal.sendMessage(intent, event.EventMessage, content, t.Unix())
+	resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
 	if err != nil {
 		portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
 		return

@@ -7,6 +7,7 @@ import (
 	"maunium.net/go/mautrix"
 	"strconv"
 	"strings"
+	"time"
 
 	"maunium.net/go/maulogger/v2"
 
@@ -57,8 +58,18 @@ func (mx *MatrixHandler) HandleEncryption(evt *event.Event) {
 func (mx *MatrixHandler) joinAndCheckMembers(evt *event.Event, intent *appservice.IntentAPI) *mautrix.RespJoinedMembers {
 	resp, err := intent.JoinRoomByID(evt.RoomID)
 	if err != nil {
-		mx.log.Debugfln("Failed to join room %s as %s with invite from %s: %v", evt.RoomID, intent.UserID, evt.Sender, err)
-		return nil
+		mx.log.Debugfln("JoinRoomByID err, retry in 5 seconds", err)
+		time.Sleep(5 * time.Second)
+		resp, err = intent.JoinRoomByID(evt.RoomID)
+		if err != nil {
+			mx.log.Debugfln("JoinRoomByID err, retry again in 5 seconds", err)
+			time.Sleep(5 * time.Second)
+			resp, err = intent.JoinRoomByID(evt.RoomID)
+			if err != nil {
+				mx.log.Debugfln("Failed to join room %s as %s with invite from %s: %v", evt.RoomID, intent.UserID, evt.Sender, err)
+				return nil
+			}
+		}
 	}
 
 	members, err := intent.JoinedMembers(resp.RoomID)
@@ -84,34 +95,20 @@ func (mx *MatrixHandler) HandleBotInvite(evt *event.Event) {
 		return
 	}
 
-	resp, err := intent.JoinRoomByID(evt.RoomID)
-	if err != nil {
-		mx.log.Debugln("Failed to join room", evt.RoomID, "with invite from", evt.Sender)
-		return
-	}
-
-	members, err := intent.JoinedMembers(resp.RoomID)
-	if err != nil {
-		mx.log.Debugln("Failed to get members in room", resp.RoomID, "after accepting invite from", evt.Sender)
-		intent.LeaveRoom(resp.RoomID)
-		return
-	}
-
-	if len(members.Joined) < 2 {
-		mx.log.Debugln("Leaving empty room", resp.RoomID, "after accepting invite from", evt.Sender)
-		intent.LeaveRoom(resp.RoomID)
+	members := mx.joinAndCheckMembers(evt, intent)
+	if members == nil {
 		return
 	}
 
 	if !user.Whitelisted {
-		intent.SendNotice(resp.RoomID, "You are not whitelisted to use this bridge.\n"+
+		_, _ = intent.SendNotice(evt.RoomID, "You are not whitelisted to use this bridge.\n"+
 			"If you're the owner of this bridge, see the bridge.permissions section in your config file.")
-		intent.LeaveRoom(resp.RoomID)
+		_, _ = intent.LeaveRoom(evt.RoomID)
 		return
 	}
 
 	if evt.RoomID == mx.bridge.Config.Bridge.Relaybot.ManagementRoom {
-		intent.SendNotice(evt.RoomID, "This is the relaybot management room. Send `!wa help` to get a list of commands.")
+		_, _ = intent.SendNotice(evt.RoomID, "This is the relaybot management room. Send `!wa help` to get a list of commands.")
 		mx.log.Debugln("Joined relaybot management room", evt.RoomID, "after invite from", evt.Sender)
 		return
 	}
@@ -124,17 +121,16 @@ func (mx *MatrixHandler) HandleBotInvite(evt *event.Event) {
 			hasPuppets = true
 			continue
 		}
-		mx.log.Debugln("Leaving multi-user room", resp.RoomID, "after accepting invite from", evt.Sender)
-		intent.SendNotice(resp.RoomID, "This bridge is user-specific, please don't invite me into rooms with other users.")
-		intent.LeaveRoom(resp.RoomID)
+		mx.log.Debugln("Leaving multi-user room", evt.RoomID, "after accepting invite from", evt.Sender)
+		_, _ = intent.SendNotice(evt.RoomID, "This bridge is user-specific, please don't invite me into rooms with other users.")
+		_, _ = intent.LeaveRoom(evt.RoomID)
 		return
 	}
 
-	if !hasPuppets {
-		user := mx.bridge.GetUserByMXID(evt.Sender)
-		user.SetManagementRoom(resp.RoomID)
-		intent.SendNotice(user.ManagementRoom, "This room has been registered as your bridge management/status room. Send `help` to get a list of commands.")
-		mx.log.Debugln(resp.RoomID, "registered as a management room with", evt.Sender)
+	if !hasPuppets && (len(user.ManagementRoom) == 0 || evt.Content.AsMember().IsDirect) {
+		user.SetManagementRoom(evt.RoomID)
+		_, _ = intent.SendNotice(user.ManagementRoom, "This room has been registered as your bridge management/status room. Send `help` to get a list of commands.")
+		mx.log.Debugln(evt.RoomID, "registered as a management room with", evt.Sender)
 	}
 }
 
