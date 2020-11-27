@@ -183,7 +183,7 @@ func (user *User) GetManagementRoom() id.RoomID {
 			return user.ManagementRoom
 		}
 		resp, err := user.bridge.Bot.CreateRoom(&mautrix.ReqCreateRoom{
-			Topic:    "WhatsApp bridge notices",
+			Topic:    "Skype bridge notices",
 			IsDirect: true,
 		})
 		if err != nil {
