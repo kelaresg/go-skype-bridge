@@ -8,11 +8,9 @@ import (
 	"math"
 	"time"
 
-	//"math"
 	"sort"
 	"strconv"
 	"strings"
-	//"time"
 
 	"maunium.net/go/maulogger/v2"
 
@@ -21,8 +19,6 @@ import (
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
-
-	"github.com/kelaresg/matrix-skype/whatsapp-ext"
 )
 
 type CommandHandler struct {
@@ -697,7 +693,7 @@ func (handler *CommandHandler) CommandOpen(ce *CommandEvent) {
 	jid := ce.Args[0]
 
 	if strings.HasSuffix(jid, skypeExt.NewUserSuffix) {
-		ce.Reply("That looks like a user ID. Did you mean `pm %s`?", jid[:len(jid)-len(whatsappExt.NewUserSuffix)])
+		ce.Reply("That looks like a user ID. Did you mean `pm %s`?", jid[:len(jid)-len(skypeExt.NewUserSuffix)])
 		return
 	}
 	ce.User.Conn.GetConversations("", handler.bridge.Config.Bridge.InitialChatSync)
@@ -977,7 +973,7 @@ func (handler *CommandHandler) CommandKick(ce *CommandEvent) {
 	//	reason = ce.Args[0]
 	//}
 
-	if strings.HasSuffix(converationId, whatsappExt.NewUserSuffix) {
+	if strings.HasSuffix(converationId, skypeExt.NewUserSuffix) {
 		ce.Reply("**Usage:** `kick <group ID> <contact id>,... reason`")
 		return
 	}
@@ -995,8 +991,8 @@ func (handler *CommandHandler) CommandKick(ce *CommandEvent) {
 	portal := user.bridge.GetPortalByJID(database.GroupPortalKey(converationId))
 
 	for i, number := range userNumbers {
-		userNumbers[i] = number //  + whatsappExt.NewUserSuffix
-		member := portal.bridge.GetPuppetByJID(number + whatsappExt.NewUserSuffix)
+		userNumbers[i] = number //  + skypeExt.NewUserSuffix
+		member := portal.bridge.GetPuppetByJID(number + skypeExt.NewUserSuffix)
 
 		if member == nil {
 			portal.log.Errorln("%s is not a puppet", number)
@@ -1025,7 +1021,7 @@ func (handler *CommandHandler) CommandLeave(ce *CommandEvent) {
 	user := ce.User
 	groupId := ce.Args[0]
 
-	if strings.HasSuffix(groupId, whatsappExt.NewUserSuffix) {
+	if strings.HasSuffix(groupId, skypeExt.NewUserSuffix) {
 		ce.Reply("**Usage:** `leave <group JID>`")
 		return
 	}

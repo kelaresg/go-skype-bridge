@@ -12,20 +12,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	//"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 	log "maunium.net/go/maulogger/v2"
 	"maunium.net/go/mautrix"
 
-	"github.com/Rhymen/go-whatsapp"
-	waProto "github.com/Rhymen/go-whatsapp/binary/proto"
+	//"github.com/Rhymen/go-whatsapp"
+	//waProto "github.com/Rhymen/go-whatsapp/binary/proto"
 
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 
 	"github.com/kelaresg/matrix-skype/database"
 	"github.com/kelaresg/matrix-skype/types"
-	"github.com/kelaresg/matrix-skype/whatsapp-ext"
+	//"github.com/kelaresg/matrix-skype/whatsapp-ext"
 )
 
 type User struct {
@@ -587,13 +587,13 @@ func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll b
 	}
 }
 
-func (user *User) HandleContactList(contacts []whatsapp.Contact) {
-	contactMap := make(map[string]whatsapp.Contact)
-	for _, contact := range contacts {
-		contactMap[contact.Jid] = contact
-	}
-	// go user.syncPuppets(contactMap)
-}
+//func (user *User) HandleContactList(contacts []whatsapp.Contact) {
+//	contactMap := make(map[string]whatsapp.Contact)
+//	for _, contact := range contacts {
+//		contactMap[contact.Jid] = contact
+//	}
+//	// go user.syncPuppets(contactMap)
+//}
 
 func (user *User) syncPuppets(contacts map[string]skype.Contact) {
 	if contacts == nil {
@@ -636,20 +636,6 @@ func (user *User) updateLastConnectionIfNecessary() {
 }
 
 func (user *User) HandleError(err error) {
-	if errors.Cause(err) != whatsapp.ErrInvalidWsData {
-		user.log.Errorfln("WhatsApp error: %v", err)
-	}
-	if closed, ok := err.(*whatsapp.ErrConnectionClosed); ok {
-		if closed.Code == 1000 && user.cleanDisconnection {
-			user.cleanDisconnection = false
-			user.log.Infoln("Clean disconnection by server")
-			return
-		}
-		go user.tryReconnect(fmt.Sprintf("Your WhatsApp connection was closed with websocket status code %d", closed.Code))
-	} else if failed, ok := err.(*whatsapp.ErrConnectionFailed); ok {
-		user.ConnectionErrors++
-		go user.tryReconnect(fmt.Sprintf("Your WhatsApp connection failed: %v", failed.Err))
-	}
 	// Otherwise unknown error, probably mostly harmless
 }
 
@@ -762,21 +748,21 @@ func (user *User) HandleImageMessage(message skype.Resource) {
 	user.putMessage(PortalMessage{message.Jid, user, message, uint64(message.Timestamp)})
 }
 
-func (user *User) HandleStickerMessage(message whatsapp.StickerMessage) {
-	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
-}
-
-func (user *User) HandleVideoMessage(message whatsapp.VideoMessage) {
-	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
-}
-
-func (user *User) HandleAudioMessage(message whatsapp.AudioMessage) {
-	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
-}
-
-func (user *User) HandleDocumentMessage(message whatsapp.DocumentMessage) {
-	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
-}
+//func (user *User) HandleStickerMessage(message whatsapp.StickerMessage) {
+//	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
+//}
+//
+//func (user *User) HandleVideoMessage(message whatsapp.VideoMessage) {
+//	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
+//}
+//
+//func (user *User) HandleAudioMessage(message whatsapp.AudioMessage) {
+//	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
+//}
+//
+//func (user *User) HandleDocumentMessage(message whatsapp.DocumentMessage) {
+//	user.putMessage(PortalMessage{message.Info.RemoteJid, user, message, message.Info.Timestamp})
+//}
 
 func (user *User) HandleContactMessage(message skype.Resource) {
 	user.log.Debugf("HandleContactMessage: ", message)
@@ -798,40 +784,40 @@ type FakeMessage struct {
 	Alert bool
 }
 
-func (user *User) HandleCallInfo(info whatsappExt.CallInfo) {
-	if info.Data != nil {
-		return
-	}
-	data := FakeMessage{
-		ID: info.ID,
-	}
-	switch info.Type {
-	case whatsappExt.CallOffer:
-		if !user.bridge.Config.Bridge.CallNotices.Start {
-			return
-		}
-		data.Text = "Incoming call"
-		data.Alert = true
-	case whatsappExt.CallOfferVideo:
-		if !user.bridge.Config.Bridge.CallNotices.Start {
-			return
-		}
-		data.Text = "Incoming video call"
-		data.Alert = true
-	case whatsappExt.CallTerminate:
-		if !user.bridge.Config.Bridge.CallNotices.End {
-			return
-		}
-		data.Text = "Call ended"
-		data.ID += "E"
-	default:
-		return
-	}
-	portal := user.GetPortalByJID(info.From)
-	if portal != nil {
-		portal.messages <- PortalMessage{info.From, user, data, 0}
-	}
-}
+//func (user *User) HandleCallInfo(info whatsappExt.CallInfo) {
+//	if info.Data != nil {
+//		return
+//	}
+//	data := FakeMessage{
+//		ID: info.ID,
+//	}
+//	switch info.Type {
+//	case whatsappExt.CallOffer:
+//		if !user.bridge.Config.Bridge.CallNotices.Start {
+//			return
+//		}
+//		data.Text = "Incoming call"
+//		data.Alert = true
+//	case whatsappExt.CallOfferVideo:
+//		if !user.bridge.Config.Bridge.CallNotices.Start {
+//			return
+//		}
+//		data.Text = "Incoming video call"
+//		data.Alert = true
+//	case whatsappExt.CallTerminate:
+//		if !user.bridge.Config.Bridge.CallNotices.End {
+//			return
+//		}
+//		data.Text = "Call ended"
+//		data.ID += "E"
+//	default:
+//		return
+//	}
+//	portal := user.GetPortalByJID(info.From)
+//	if portal != nil {
+//		portal.messages <- PortalMessage{info.From, user, data, 0}
+//	}
+//}
 
 func (user *User) HandleTypingStatus(info skype.Resource) {
 	sendId := info.SendId + skypeExt.NewUserSuffix
@@ -904,62 +890,62 @@ func (user *User) HandlePresence(info skype.Resource) {
 	}
 }
 
-func (user *User) HandlePresenceWA(info whatsappExt.Presence) {
-	puppet := user.bridge.GetPuppetByJID(info.SenderJID)
-	switch info.Status {
-	case whatsapp.PresenceUnavailable:
-		_ = puppet.DefaultIntent().SetPresence("offline")
-	case whatsapp.PresenceAvailable:
-		if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
-			portal := user.bridge.GetPortalByMXID(puppet.typingIn)
-			_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
-			puppet.typingIn = ""
-			puppet.typingAt = 0
-		}
-		_ = puppet.DefaultIntent().SetPresence("online")
-	case whatsapp.PresenceComposing:
-		portal := user.GetPortalByJID(info.JID)
-		if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
-			if puppet.typingIn == portal.MXID {
-				return
-			}
-			_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
-		}
-		puppet.typingIn = portal.MXID
-		puppet.typingAt = time.Now().Unix()
-		_, _ = puppet.IntentFor(portal).UserTyping(portal.MXID, true, 15*1000)
-		_ = puppet.DefaultIntent().SetPresence("online")
-	}
-}
+//func (user *User) HandlePresenceWA(info whatsappExt.Presence) {
+//	puppet := user.bridge.GetPuppetByJID(info.SenderJID)
+//	switch info.Status {
+//	case whatsapp.PresenceUnavailable:
+//		_ = puppet.DefaultIntent().SetPresence("offline")
+//	case whatsapp.PresenceAvailable:
+//		if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
+//			portal := user.bridge.GetPortalByMXID(puppet.typingIn)
+//			_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
+//			puppet.typingIn = ""
+//			puppet.typingAt = 0
+//		}
+//		_ = puppet.DefaultIntent().SetPresence("online")
+//	case whatsapp.PresenceComposing:
+//		portal := user.GetPortalByJID(info.JID)
+//		if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
+//			if puppet.typingIn == portal.MXID {
+//				return
+//			}
+//			_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
+//		}
+//		puppet.typingIn = portal.MXID
+//		puppet.typingAt = time.Now().Unix()
+//		_, _ = puppet.IntentFor(portal).UserTyping(portal.MXID, true, 15*1000)
+//		_ = puppet.DefaultIntent().SetPresence("online")
+//	}
+//}
 
-func (user *User) HandleMsgInfo(info whatsappExt.MsgInfo) {
-	if (info.Command == whatsappExt.MsgInfoCommandAck || info.Command == whatsappExt.MsgInfoCommandAcks) && info.Acknowledgement == whatsappExt.AckMessageRead {
-		portal := user.GetPortalByJID(info.ToJID)
-		if len(portal.MXID) == 0 {
-			return
-		}
-
-		go func() {
-			intent := user.bridge.GetPuppetByJID(info.SenderJID).IntentFor(portal)
-			for _, id := range info.IDs {
-				msg := user.bridge.DB.Message.GetByJID(portal.Key, id)
-				if msg == nil {
-					continue
-				}
-
-				err := intent.MarkRead(portal.MXID, msg.MXID)
-				if err != nil {
-					user.log.Warnln("Failed to mark message %s as read by %s: %v", msg.MXID, info.SenderJID, err)
-				}
-			}
-		}()
-	}
-}
+//func (user *User) HandleMsgInfo(info whatsappExt.MsgInfo) {
+//	if (info.Command == whatsappExt.MsgInfoCommandAck || info.Command == whatsappExt.MsgInfoCommandAcks) && info.Acknowledgement == whatsappExt.AckMessageRead {
+//		portal := user.GetPortalByJID(info.ToJID)
+//		if len(portal.MXID) == 0 {
+//			return
+//		}
+//
+//		go func() {
+//			intent := user.bridge.GetPuppetByJID(info.SenderJID).IntentFor(portal)
+//			for _, id := range info.IDs {
+//				msg := user.bridge.DB.Message.GetByJID(portal.Key, id)
+//				if msg == nil {
+//					continue
+//				}
+//
+//				err := intent.MarkRead(portal.MXID, msg.MXID)
+//				if err != nil {
+//					user.log.Warnln("Failed to mark message %s as read by %s: %v", msg.MXID, info.SenderJID, err)
+//				}
+//			}
+//		}()
+//	}
+//}
 
 func (user *User) HandleCommand(cmd skypeExt.Command) {
 	switch cmd.Type {
 	case skypeExt.CommandPicture:
-		if strings.HasSuffix(cmd.JID, whatsappExt.NewUserSuffix) {
+		if strings.HasSuffix(cmd.JID, skypeExt.NewUserSuffix) {
 			puppet := user.bridge.GetPuppetByJID(cmd.JID)
 			go puppet.UpdateAvatar(user, cmd.ProfilePicInfo)
 		} else {
@@ -1145,9 +1131,9 @@ func (user *User) HandleJsonMessage(message string) {
 	user.updateLastConnectionIfNecessary()
 }
 
-func (user *User) HandleRawMessage(message *waProto.WebMessageInfo) {
-	user.updateLastConnectionIfNecessary()
-}
+//func (user *User) HandleRawMessage(message *waProto.WebMessageInfo) {
+//	user.updateLastConnectionIfNecessary()
+//}
 
 func (user *User) NeedsRelaybot(portal *Portal) bool {
 	return false
