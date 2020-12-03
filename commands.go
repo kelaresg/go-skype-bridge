@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	skype "github.com/kelaresg/go-skypeapi"
 	"github.com/kelaresg/matrix-skype/database"
@@ -38,6 +39,7 @@ func NewCommandHandler(bridge *Bridge) *CommandHandler {
 type CommandEvent struct {
 	Bot     *appservice.IntentAPI
 	Bridge  *Bridge
+	Portal  *Portal
 	Handler *CommandHandler
 	RoomID  id.RoomID
 	User    *User
@@ -142,7 +144,7 @@ func (handler *CommandHandler) CommandMux(ce *CommandEvent) {
 			handler.CommandCreate(ce)
 		}
 	default:
-		ce.Reply("Unknown Command")
+		handler.CommandSpecialMux(ce)
 	}
 }
 
@@ -1151,50 +1153,105 @@ func (handler *CommandHandler) CommandJoin(ce *CommandEvent) {
 //	}
 //}
 
-const cmdCreateHelp = `create <_topic_> <_member user id_>,... - Create a group.`
+const cmdCreateHelp = `create - Create a group chat.`
 
 func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
-	if len(ce.Args) < 2 {
-		ce.Reply("**Usage:** `create <topic> <member user id>,...`")
+	if ce.Portal != nil {
+		ce.Reply("This is already a portal room")
 		return
 	}
 
-	user := ce.User
-	topic := ce.Args[0]
-	members := skype.Members{}
+	members, err := ce.Bot.JoinedMembers(ce.RoomID)
+	if err != nil {
+		ce.Reply("Failed to get room members: %v", err)
+		return
+	}
 
-	// The user who created the group must be in the members and have "Admin" rights
-	userId := ce.User.Conn.UserProfile.Username
+	var roomNameEvent event.RoomNameEventContent
+	err = ce.Bot.StateEvent(ce.RoomID, event.StateRoomName, "", &roomNameEvent)
+	if err != nil && !errors.Is(err, mautrix.MNotFound) {
+		ce.Reply("Failed to get room name")
+		return
+	} else if len(roomNameEvent.Name) == 0 {
+		ce.Reply("Please set a name for the room first")
+		return
+	}
+
+	var encryptionEvent event.EncryptionEventContent
+	err = ce.Bot.StateEvent(ce.RoomID, event.StateEncryption, "", &encryptionEvent)
+	if err != nil && !errors.Is(err, mautrix.MNotFound) {
+		ce.Reply("Failed to get room encryption status")
+		return
+	}
+
+	var participants []string
+	for userID := range members.Joined {
+		jid, ok := handler.bridge.ParsePuppetMXID(userID)
+		if ok && jid != ce.User.JID {
+			participants = append(participants, jid)
+		}
+	}
+
+	selfMembers := skype.Members{}
 	member2 := skype.Member{
-		Id:   "8:" + userId,
+		Id:   strings.Replace(ce.User.JID, skypeExt.NewUserSuffix,"", 1),
 		Role: "Admin",
 	}
 
-	members.Members = append(members.Members, member2)
-	members.Properties = skype.Properties{
+	selfMembers.Members = append(selfMembers.Members, member2)
+	selfMembers.Properties = skype.Properties{
 		HistoryDisclosed: "true",
-		Topic:            topic,
+		Topic:            roomNameEvent.Name,
+	}
+	handler.log.Debugln("Create Group", roomNameEvent.Name, "with", selfMembers)
+	err = ce.User.Conn.HandleGroupCreate(selfMembers)
+	if err != nil {
+		ce.Reply("Failed to create group: %v", err)
+		return
 	}
 
-	handler.log.Debugln("Create Group", topic, "with", members)
-	err := user.Conn.HandleGroupCreate(members)
-	inputArr := strings.Split(ce.Args[1], ",")
-	members = skype.Members{}
-	for _, memberId := range inputArr {
-		members.Members = append(members.Members, skype.Member{
+	participantMembers := skype.Members{}
+	for _, participant := range participants {
+		participantArr := strings.Split(participant, "@")
+		memberId := id.Dec(participantArr[0])
+		cond1 := "8-live-"
+		cond2 := "8-"
+		if strings.HasPrefix(memberId, cond1) {
+			memberId = strings.Replace(memberId, cond1, "8:live:", 1)
+		} else if strings.HasPrefix(memberId, cond2){
+			memberId = strings.Replace(memberId, cond2, "8:", 1)
+		}
+		participantMembers.Members = append(participantMembers.Members, skype.Member{
 			Id:   memberId,
 			Role: "Admin",
 		})
 	}
-	conversationId, ok := <-user.Conn.CreateChan
+	conversationId, ok := <-ce.User.Conn.CreateChan
 	if ok {
-		err = user.Conn.AddMember(members, conversationId)
+		portal := handler.bridge.GetPortalByJID(database.GroupPortalKey(conversationId))
+		portal.roomCreateLock.Lock()
+		defer portal.roomCreateLock.Unlock()
+		if len(portal.MXID) != 0 {
+			portal.log.Warnln("Detected race condition in room creation")
+			// TODO race condition, clean up the old room
+		}
+		portal.MXID = ce.RoomID
+		portal.Name = roomNameEvent.Name
+		portal.Encrypted = encryptionEvent.Algorithm == id.AlgorithmMegolmV1
+		if !portal.Encrypted && handler.bridge.Config.Bridge.Encryption.Default {
+			_, err = portal.MainIntent().SendStateEvent(portal.MXID, event.StateEncryption, "", &event.EncryptionEventContent{Algorithm: id.AlgorithmMegolmV1})
+			if err != nil {
+				portal.log.Warnln("Failed to enable e2be:", err)
+			}
+			portal.Encrypted = true
+		}
+
+		portal.Update()
+		portal.UpdateBridgeInfo()
+
+		err = ce.User.Conn.AddMember(participantMembers, conversationId)
+		ce.Reply("Successfully created Skype group %s", portal.Key.JID)
 	}
-	if err != nil {
-		ce.Reply("Please confirm that parameters is correct.")
-	} else {
-		ce.Reply("Syncing group list...")
-		time.Sleep(time.Duration(3) * time.Second)
-		ce.Reply("Syncing group list completed")
-	}
+
+	//ce.User.addPortalToCommunity(portal)
 }

@@ -226,7 +226,7 @@ func (mx *MatrixHandler) HandlePuppetInvite(evt *event.Event, inviter *User, pup
 		_, _ = intent.SendNotice(evt.RoomID, "Please invite the bridge bot first if you want to bridge to a WhatsApp group.")
 		_, _ = intent.LeaveRoom(evt.RoomID)
 	} else {
-		_, _ = intent.SendNotice(evt.RoomID, "This puppet will remain inactive until this room is bridged to a WhatsApp group.")
+		_, _ = intent.SendNotice(evt.RoomID, "This puppet will remain inactive until this room is bridged to a Skype group.")
 	}
 }
 
