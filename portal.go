@@ -641,10 +641,10 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 	} else {
 		fmt.Println("SyncSkype ensureUserInvited", portal.MXID)
 		portal.ensureUserInvited(user)
-		rep, err := portal.MainIntent().SetPowerLevel(portal.MXID, user.MXID, 95)
-		if err != nil {
-			portal.log.Warnfln("SyncSkype: SetPowerLevel err: ", err, rep)
-		}
+		//rep, err := portal.MainIntent().SetPowerLevel(portal.MXID, user.MXID, 95)
+		//if err != nil {
+		//	portal.log.Warnfln("SyncSkype: SetPowerLevel err: ", err, rep)
+		//}
 
 		//if portal.IsPrivateChat() {
 		//	preUserIds,_ :=  portal.GetMatrixUsers()

@@ -18,6 +18,7 @@ package config
 
 import (
 	"io/ioutil"
+	"maunium.net/go/mautrix/patch"
 
 	"gopkg.in/yaml.v2"
 
@@ -98,6 +99,10 @@ func (config *Config) MakeAppService() (*appservice.AppService, error) {
 	as.HomeserverURL = config.Homeserver.Address
 	as.Host.Hostname = config.AppService.Hostname
 	as.Host.Port = config.AppService.Port
+	patch.ThirdPartyIdEncrypt = true
+	patch.AsBotName = config.AppService.Bot.Username
+	patch.AsUserPrefix = "skype&"
+	patch.XorKey = "hudsds1y"
 	var err error
 	as.Registration, err = config.GetRegistration()
 	return as, err

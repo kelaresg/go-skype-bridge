@@ -7,7 +7,6 @@ import (
 	"github.com/kelaresg/matrix-skype/database"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 	"math"
-	"time"
 
 	"sort"
 	"strconv"
@@ -1162,6 +1161,7 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 	}
 
 	members, err := ce.Bot.JoinedMembers(ce.RoomID)
+	handler.log.Debugln("Create Group-1", members)
 	if err != nil {
 		ce.Reply("Failed to get room members: %v", err)
 		return
@@ -1203,24 +1203,15 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 		HistoryDisclosed: "true",
 		Topic:            roomNameEvent.Name,
 	}
-	handler.log.Debugln("Create Group", roomNameEvent.Name, "with", selfMembers)
+	handler.log.Debugln("Create Group", roomNameEvent.Name, "with", selfMembers, participants)
 	err = ce.User.Conn.HandleGroupCreate(selfMembers)
 	if err != nil {
 		ce.Reply("Failed to create group: %v", err)
 		return
 	}
-
 	participantMembers := skype.Members{}
 	for _, participant := range participants {
-		participantArr := strings.Split(participant, "@")
-		memberId := id.Dec(participantArr[0])
-		cond1 := "8-live-"
-		cond2 := "8-"
-		if strings.HasPrefix(memberId, cond1) {
-			memberId = strings.Replace(memberId, cond1, "8:live:", 1)
-		} else if strings.HasPrefix(memberId, cond2){
-			memberId = strings.Replace(memberId, cond2, "8:", 1)
-		}
+		memberId := strings.Replace(participant, skypeExt.NewUserSuffix, "", 1)
 		participantMembers.Members = append(participantMembers.Members, skype.Member{
 			Id:   memberId,
 			Role: "Admin",
