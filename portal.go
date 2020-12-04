@@ -2342,17 +2342,14 @@ func (portal *Portal) HandleMatrixKick(sender *User, evt *event.Event) {
 }
 
 func (portal *Portal) HandleMatrixInvite(sender *User, evt *event.Event) {
-	number, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
-	puppet := portal.bridge.GetPuppetByMXID(id.UserID(evt.GetStateKey()))
-	fmt.Println("HandleMatrixInvite", puppet)
+	jid, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
+	puppet := portal.bridge.GetPuppetByJID(jid)
 	if puppet != nil {
-		number = strings.Replace(number, "8:", "", 1)
-		number = strings.Replace(number, skypeExt.NewUserSuffix, "", 1)
-		err := sender.Conn.HandleGroupInvite(portal.Key.JID, []string{number})
+		jid = strings.Replace(jid, skypeExt.NewUserSuffix, "", 1)
+		err := sender.Conn.HandleGroupInvite(portal.Key.JID, []string{jid})
 		if err != nil {
 			portal.log.Errorfln("Failed to add %s to group as %s: %v", puppet.JID, sender.MXID, err)
 			return
 		}
-		//portal.log.Infoln("Add %s response: %s", puppet.JID, <-resp)
 	}
 }
