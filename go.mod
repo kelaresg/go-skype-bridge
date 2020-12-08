@@ -18,4 +18,4 @@ require (
 	maunium.net/go/mautrix v0.8.0-rc.4
 )
 
-replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201126070406-7b13ac473bcc
+replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201208081810-787323a21113

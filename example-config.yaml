@@ -168,6 +168,14 @@ bridge:
         # It is recommended to also set private_chat_portal_meta to true when using this.
         default: false
 
+        puppet_id:
+            # when set to true, the matrixid of the contact (puppet) from the bridge to the matrix will be encrypted into another string
+            default: false
+            # 8 characters
+            key: '12dsf323'
+            # Use the username_template prefix. (Warning: At present, username_template cannot be too complicated, otherwise this function may cause unknown errors)
+            username_template_prefix: 'skype&'
+
     # Permissions for using the bridge.
     # Permitted values:
     # relaybot - Talk through the relaybot (if enabled), no access otherwise

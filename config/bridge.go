@@ -61,6 +61,12 @@ type BridgeConfig struct {
 			RequireCrossSigning bool `yaml:"require_cross_signing"`
 			RequireVerification bool `yaml:"require_verification"`
 		} `yaml:"key_sharing"`
+
+		PuppetId struct {
+			Allow                  bool `yaml:"allow"`
+			Key                    string `yaml:"key"`
+			UsernameTemplatePrefix string `yaml:"username_template_prefix"`
+		} `yaml:"puppet_id"`
 	} `yaml:"encryption"`
 
 	Permissions PermissionConfig `yaml:"permissions"`
