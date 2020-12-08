@@ -2,16 +2,14 @@ package main
 
 import (
 	"bytes"
-	//whatsappExt "github.com/kelaresg/matrix-skype/whatsapp-ext"
+	"maunium.net/go/mautrix/patch"
 
-	//"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	skype "github.com/kelaresg/go-skypeapi"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
-	//whatsappExt "github.com/kelaresg/matrix-skype/whatsapp-ext"
 	"html"
 	"image"
 	"image/gif"
@@ -28,14 +26,9 @@ import (
 
 	"github.com/pkg/errors"
 	log "maunium.net/go/maulogger/v2"
-
-	"maunium.net/go/mautrix/crypto/attachment"
-
-	//"github.com/Rhymen/go-whatsapp"
-	//waProto "github.com/Rhymen/go-whatsapp/binary/proto"
-
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/appservice"
+	"maunium.net/go/mautrix/crypto/attachment"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
@@ -43,7 +36,6 @@ import (
 
 	"github.com/kelaresg/matrix-skype/database"
 	"github.com/kelaresg/matrix-skype/types"
-	//"github.com/kelaresg/matrix-skype/whatsapp-ext"
 )
 
 func (bridge *Bridge) GetPortalByMXID(mxid id.RoomID) *Portal {
@@ -779,7 +771,7 @@ func (portal *Portal) ChangeAdminStatus(jids []string, setAdmin bool) {
 //			UserID: member.MXID,
 //		})
 //		if err != nil {
-//			portal.log.Errorln("Error %s member from whatsapp: %v", action, err)
+//			portal.log.Errorln("Error %s member from skype: %v", action, err)
 //		}
 //	}
 //}
@@ -789,13 +781,14 @@ func (portal *Portal) membershipRemove(content string) {
 	err := xml.Unmarshal([]byte(content), &xmlFormat)
 	for _, target := range xmlFormat.Targets {
 		member := portal.bridge.GetPuppetByJID(target)
-
-		memberMaxid := strings.Replace(string(member.MXID), "@skype&8:", "@skype&8-", 1)
-		_, err = portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{
-			UserID: id.UserID(memberMaxid),
-		})
-		if err != nil {
-			portal.log.Errorln("Error %v member from whatsapp:", err)
+		memberMXID := id.UserID(patch.Parse(string(member.MXID)))
+		if portal.bridge.AS.StateStore.IsInRoom(portal.MXID, memberMXID) {
+			_, err = portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{
+				UserID: member.MXID,
+			})
+			if err != nil {
+				portal.log.Errorln("Error kick member from matrix after kick from skype: %v", err)
+			}
 		}
 	}
 }
@@ -2326,17 +2319,15 @@ func (portal *Portal) HandleMatrixLeave(sender *User) {
 }
 
 func (portal *Portal) HandleMatrixKick(sender *User, evt *event.Event) {
-	number, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
-	puppet := portal.bridge.GetPuppetByMXID(id.UserID(evt.GetStateKey()))
-	fmt.Println("HandleMatrixKick", puppet)
+	jid, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
+	puppet := portal.bridge.GetPuppetByJID(jid)
 	if puppet != nil {
-		number = strings.Replace(number, skypeExt.NewUserSuffix, "", 1)
-		err := sender.Conn.HandleGroupKick(portal.Key.JID, []string{number})
+		jid = strings.Replace(jid, skypeExt.NewUserSuffix, "", 1)
+		err := sender.Conn.HandleGroupKick(portal.Key.JID, []string{jid})
 		if err != nil {
 			portal.log.Errorfln("Failed to kick %s from group as %s: %v", puppet.JID, sender.MXID, err)
 			return
 		}
-		//portal.log.Infoln("Kick %s response: %s", puppet.JID, <-resp)
 	}
 }
 
