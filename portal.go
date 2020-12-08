@@ -1486,13 +1486,12 @@ func (portal *Portal) HandleLocationMessageSkype(source *User, message skype.Res
 	geo := fmt.Sprintf("geo:%.6f,%.6f", float32(latitude)/1000000, float32(longitude)/1000000)
 	content := &event.MessageEventContent{
 		MsgType:       event.MsgText,
-		Body:          fmt.Sprintf("Location: <a href='%s'>%s</a>%s<br>", locationMessage.A.Href, locationMessage.Address, geo),
+		Body:          fmt.Sprintf("Location: <a href='%s'>%s</a>%s<br>\n", locationMessage.A.Href, locationMessage.Address, geo),
 		Format:        event.FormatHTML,
-		FormattedBody: fmt.Sprintf("Location: <a href='%s'>%s</a>%s<br>", locationMessage.A.Href, locationMessage.Address, geo),
+		FormattedBody: fmt.Sprintf("Location: <a href='%s'>%s</a>%s<br>\n", locationMessage.A.Href, locationMessage.Address, geo),
 		GeoURI:        geo,
 	}
 
-	//portal.SetReply(content, message.ContextInfo)
 	portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
