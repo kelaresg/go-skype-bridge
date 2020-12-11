@@ -72,6 +72,9 @@ func (handler *CommandHandler) Handle(roomID id.RoomID, user *User, message stri
 		Command: strings.ToLower(args[0]),
 		Args:    args[1:],
 	}
+	if ce.Command == "login" {
+		message = ""
+	}
 	handler.log.Debugfln("%s sent '%s' in %s", user.MXID, message, roomID)
 	if roomID == handler.bridge.Config.Bridge.Relaybot.ManagementRoom {
 		handler.CommandRelaybot(ce)
