@@ -5,6 +5,7 @@ import (
 	skype "github.com/kelaresg/go-skypeapi"
 	"github.com/kelaresg/matrix-skype/database"
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/patch"
 	"strconv"
 	"strings"
 	"time"
@@ -210,7 +211,15 @@ func (mx *MatrixHandler) HandlePuppetInvite(evt *event.Event, inviter *User, pup
 	}
 	var hasBridgeBot, hasOtherUsers bool
 	for mxid, _ := range members.Joined {
-		if mxid == intent.UserID || mxid == inviter.MXID {
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("HandlePuppetInvite mxid", mxid)
+		fmt.Println("HandlePuppetInvite intent.UserID", intent.UserID)
+		fmt.Println("HandlePuppetInvite patch.Parse(intent.UserID)", id.UserID(patch.Parse(string(intent.UserID))))
+		fmt.Println("HandlePuppetInvite inviter.MXID", inviter.MXID)
+		fmt.Println()
+		fmt.Println()
+		if mxid == id.UserID(patch.Parse(string(intent.UserID))) || mxid == inviter.MXID {
 			continue
 		} else if mxid == mx.bridge.Bot.UserID {
 			hasBridgeBot = true
@@ -223,14 +232,16 @@ func (mx *MatrixHandler) HandlePuppetInvite(evt *event.Event, inviter *User, pup
 		mx.handlePrivatePortal(evt.RoomID, inviter, puppet, key)
 	} else if !hasBridgeBot {
 		mx.log.Debugln("Leaving multi-user room", evt.RoomID, "as", puppet.MXID, "after accepting invite from", evt.Sender)
-		_, _ = intent.SendNotice(evt.RoomID, "Please invite the bridge bot first if you want to bridge to a WhatsApp group.")
+		_, _ = intent.SendNotice(evt.RoomID, "Please invite the bridge bot first if you want to bridge to a skype group.")
 		_, _ = intent.LeaveRoom(evt.RoomID)
 	} else {
-		_, _ = intent.SendNotice(evt.RoomID, "This puppet will remain inactive until this room is bridged to a WhatsApp group.")
+		_, _ = intent.SendNotice(evt.RoomID, "This puppet will remain inactive until this room is bridged to a Skype group.")
 	}
 }
 
 func (mx *MatrixHandler) HandleMembership(evt *event.Event) {
+	fmt.Println("HandleMembership0 evt.Sender:", evt.Sender)
+	fmt.Println("HandleMembership0 evt.GetStateKey:", evt.GetStateKey())
 	if _, isPuppet := mx.bridge.ParsePuppetMXID(evt.Sender); evt.Sender == mx.bridge.Bot.UserID || isPuppet {
 		return
 	}
@@ -274,6 +285,14 @@ func (mx *MatrixHandler) HandleMembership(evt *event.Event) {
 				}
 			}
 		} else {
+			fmt.Println()
+			fmt.Println()
+			fmt.Println("HandleMembership evt.RoomID", evt.RoomID)
+			fmt.Println("HandleMembership id.UserID(evt.GetStateKey())", id.UserID(evt.GetStateKey()))
+			fmt.Println("HandleMembership event.MembershipLeave", event.MembershipLeave)
+			fmt.Println("HandleMembership user.", event.MembershipLeave)
+			fmt.Println()
+			//mx.as.StateStore.SetMembership(evt.RoomID, id.UserID(evt.GetStateKey()), event.MembershipLeave)
 			portal.HandleMatrixKick(user, evt)
 		}
 	} else if content.Membership == event.MembershipInvite && !isSelf {

@@ -22,7 +22,7 @@ func (user *User) updateCommunityProfile() {
 		Name             string `json:"name"`
 		AvatarURL        string `json:"avatar_url"`
 		ShortDescription string `json:"short_description"`
-	}{"WhatsApp", user.bridge.Config.AppService.Bot.Avatar, "Your WhatsApp bridged chats"}
+	}{"Skype", user.bridge.Config.AppService.Bot.Avatar, "Your Skype bridged chats"}
 	_, err := user.bridge.Bot.MakeRequest(http.MethodPost, url, &profileReq, nil)
 	if err != nil {
 		user.log.Warnfln("Failed to update metadata of %s: %v", user.CommunityID, err)

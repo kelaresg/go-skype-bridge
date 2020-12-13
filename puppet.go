@@ -15,7 +15,7 @@ import (
 
 	"github.com/kelaresg/matrix-skype/database"
 	"github.com/kelaresg/matrix-skype/types"
-	"github.com/kelaresg/matrix-skype/whatsapp-ext"
+	//"github.com/kelaresg/matrix-skype/whatsapp-ext"
 )
 
 func (bridge *Bridge) ParsePuppetMXID(mxid id.UserID) (types.SkypeID, bool) {
@@ -134,10 +134,8 @@ func (bridge *Bridge) NewPuppet(dbPuppet *database.Puppet) *Puppet {
 
 		MXID: id.NewUserID(
 			bridge.Config.Bridge.FormatUsername(
-				//	dbPuppet.JID,
-				//),
 				strings.Replace(
-					strings.Replace(dbPuppet.JID, whatsappExt.NewUserSuffix, "", 1),
+					strings.Replace(dbPuppet.JID, skypeExt.NewUserSuffix, "", 1),
 					":",
 					"-",
 					-1,
@@ -164,7 +162,7 @@ type Puppet struct {
 }
 
 func (puppet *Puppet) PhoneNumber() string {
-	return strings.Replace(puppet.JID, whatsappExt.NewUserSuffix, "", 1)
+	return strings.Replace(puppet.JID, skypeExt.NewUserSuffix, "", 1)
 }
 
 func (puppet *Puppet) IntentFor(portal *Portal) *appservice.IntentAPI {
@@ -272,7 +270,7 @@ func (puppet *Puppet) UpdateName(source *User, contact skype.Contact) bool {
 
 func (puppet *Puppet) updatePortalMeta(meta func(portal *Portal)) {
 	if puppet.bridge.Config.Bridge.PrivateChatPortalMeta {
-		jid := strings.Replace(puppet.JID, whatsappExt.NewUserSuffix, "", 1)
+		jid := strings.Replace(puppet.JID, skypeExt.NewUserSuffix, "", 1)
 		for _, portal := range puppet.bridge.GetAllPortalsByJID(jid) {
 			meta(portal)
 		}

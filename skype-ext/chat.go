@@ -18,9 +18,8 @@ package skypeExt
 
 import (
 	"encoding/json"
+	skype "github.com/kelaresg/go-skypeapi"
 	"strings"
-
-	"github.com/Rhymen/go-whatsapp"
 )
 
 type ChatUpdateCommand string
@@ -155,7 +154,7 @@ func (cud *ChatUpdateData) UnmarshalJSON(data []byte) error {
 }
 
 type ChatUpdateHandler interface {
-	whatsapp.Handler
+	skype.Handler
 	HandleChatUpdate(ChatUpdate)
 }
 

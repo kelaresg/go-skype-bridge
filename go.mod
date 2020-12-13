@@ -3,10 +3,9 @@ module github.com/kelaresg/matrix-skype
 go 1.14
 
 require (
-	github.com/Rhymen/go-whatsapp v0.1.0
 	github.com/chai2010/webp v1.1.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/kelaresg/go-skypeapi v0.1.2-0.20201126103218-226d1ec92858
+	github.com/kelaresg/go-skypeapi v0.1.2-0.20201211120317-8651f9f08575
 	github.com/lib/pq v1.7.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
@@ -19,6 +18,4 @@ require (
 	maunium.net/go/mautrix v0.8.0-rc.4
 )
 
-replace github.com/Rhymen/go-whatsapp => github.com/tulir/go-whatsapp v0.2.8
-
-replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201126070406-7b13ac473bcc
+replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201208081810-787323a21113

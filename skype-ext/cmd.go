@@ -18,9 +18,8 @@ package skypeExt
 
 import (
 	"encoding/json"
+	skype "github.com/kelaresg/go-skypeapi"
 	"strings"
-
-	"github.com/Rhymen/go-whatsapp"
 )
 
 type CommandType string
@@ -41,7 +40,7 @@ type Command struct {
 }
 
 type CommandHandler interface {
-	whatsapp.Handler
+	skype.Handler
 	HandleCommand(Command)
 }
 
