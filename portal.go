@@ -1044,7 +1044,8 @@ func (portal *Portal) getBridgeInfo() (string, BridgeInfoContent) {
 			AvatarURL:   portal.AvatarURL.CUString(),
 		},
 	}
-	bridgeInfoStateKey := fmt.Sprintf("net.maunium.whatsapp://whatsapp/%s", portal.Key.JID)
+	// bridgeInfoStateKey := fmt.Sprintf("net.maunium.whatsapp://whatsapp/%s", portal.Key.JID) ??
+	bridgeInfoStateKey := portal.Key.JID
 	return bridgeInfoStateKey, bridgeInfo
 }
 
@@ -2290,6 +2291,9 @@ func (portal *Portal) Cleanup(puppetsOnly bool) {
 		} else if !puppetsOnly {
 			_, err = intent.KickUser(portal.MXID, &mautrix.ReqKickUser{UserID: member, Reason: "Deleting portal"})
 			if err != nil {
+				content := format.RenderMarkdown("Error leaving room(Deleting portal from skype), you can leave this room manually.", true, false)
+				content.MsgType = event.MsgNotice
+				_, _ = portal.MainIntent().SendMessageEvent(portal.MXID, event.EventMessage, content)
 				portal.log.Errorln("Error kicking user while cleaning up portal:", err)
 			}
 		}

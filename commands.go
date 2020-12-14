@@ -50,11 +50,11 @@ type CommandEvent struct {
 func (ce *CommandEvent) Reply(msg string, args ...interface{}) {
 	content := format.RenderMarkdown(fmt.Sprintf(msg, args...), true, false)
 	content.MsgType = event.MsgNotice
-	room := ce.User.ManagementRoom
-	if len(room) == 0 {
-		room = ce.RoomID
+	intent := ce.Bot
+	if ce.Portal != nil && ce.Portal.IsPrivateChat() {
+		intent = ce.Portal.MainIntent()
 	}
-	_, err := ce.Bot.SendMessageEvent(room, event.EventMessage, content)
+	_, err := intent.SendMessageEvent(ce.RoomID, event.EventMessage, content)
 	if err != nil {
 		ce.Handler.log.Warnfln("Failed to reply to command from %s: %v", ce.User.MXID, err)
 	}
