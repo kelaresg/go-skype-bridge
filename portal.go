@@ -1338,6 +1338,10 @@ func (portal *Portal) HandleMessageRevokeSkype(user *User, message skype.Resourc
 	}
 	_, err := intent.RedactEvent(portal.MXID, msg.MXID)
 	if err != nil {
+		// TODO Maybe there is a better implementation
+		if strings.Index(err.Error(), "M_FORBIDDEN") > -1 {
+			_, err = portal.MainIntent().RedactEvent(portal.MXID, msg.MXID)
+		}
 		portal.log.Errorln("Failed to redact %s: %v", msg.JID, err)
 		return
 	}
