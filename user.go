@@ -372,6 +372,9 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	if len(user.Conn.UserProfile.LastName) > 0 {
 		username = username + user.Conn.UserProfile.LastName
 	}
+	if username == "" {
+		username = user.Conn.UserProfile.Username
+	}
 	ce.Reply("Successfully logged in as @" + username)
 
 	user.Conn.Subscribes() // subscribe basic event
