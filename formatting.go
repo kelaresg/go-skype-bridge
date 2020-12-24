@@ -18,6 +18,7 @@ var italicRegex = regexp.MustCompile("([\\s>~*]|^)_(.+?)_([^a-zA-Z\\d]|$)")
 var boldRegex = regexp.MustCompile("([\\s>_~]|^)\\*(.+?)\\*([^a-zA-Z\\d]|$)")
 var strikethroughRegex = regexp.MustCompile("([\\s>_*]|^)~(.+?)~([^a-zA-Z\\d]|$)")
 var codeBlockRegex = regexp.MustCompile("```(?:.|\n)+?```")
+
 //var mentionRegex = regexp.MustCompile("@[0-9]+")
 //var mentionRegex = regexp.MustCompile("@(.*)")
 var mentionRegex = regexp.MustCompile("<at[^>]+\\bid=\"([^\"]+)\"(.*?)</at>*")
@@ -125,6 +126,7 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
 	}
 	if output != content.Body {
 		output = strings.Replace(output, "\n", "<br/>", -1)
+		content.Body = html.UnescapeString(content.Body) // skype messages arrive escaped which causes element rendering issues #1
 
 		// parse @user message
 		r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
