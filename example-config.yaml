@@ -127,6 +127,12 @@ bridge:
     # Whether or not to sync with custom puppets to receive EDUs that
     # are not normally sent to appservices.
     sync_with_custom_puppets: true
+    # When double puppeting is enabled, users can use `!skype toggle` to change whether or not
+    # presence and read receipts are bridged. These settings set the default values.
+    # Existing users won't be affected when these are changed.
+    # (This feature is temporarily unavailable !!!)
+    default_bridge_receipts: true
+    default_bridge_presence: true
     # Shared secret for https://github.com/devture/matrix-synapse-shared-secret-auth
     #
     # If set, custom puppets will be enabled automatically for local users

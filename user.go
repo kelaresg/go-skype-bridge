@@ -590,6 +590,50 @@ func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll b
 	}
 }
 
+func (user *User) UpdateDirectChats(chats map[id.UserID][]id.RoomID) {
+	//if !user.bridge.Config.Bridge.SyncDirectChatList {
+	//	return
+	//}
+	//puppet := user.bridge.GetPuppetByCustomMXID(user.MXID)
+	//if puppet == nil || puppet.CustomIntent() == nil {
+	//	return
+	//}
+	//intent := puppet.CustomIntent()
+	//method := http.MethodPatch
+	//if chats == nil {
+	//	chats = user.getDirectChats()
+	//	method = http.MethodPut
+	//}
+	//user.log.Debugln("Updating m.direct list on homeserver")
+	//var err error
+	//if user.bridge.Config.Homeserver.Asmux {
+	//	urlPath := intent.BuildBaseURL("_matrix", "client", "unstable", "net.maunium.asmux", "dms")
+	//	_, err = intent.MakeFullRequest(method, urlPath, http.Header{
+	//		"X-Asmux-Auth": {user.bridge.AS.Registration.AppToken},
+	//	}, chats, nil)
+	//} else {
+	//	existingChats := make(map[id.UserID][]id.RoomID)
+	//	err = intent.GetAccountData(event.AccountDataDirectChats.Type, &existingChats)
+	//	if err != nil {
+	//		user.log.Warnln("Failed to get m.direct list to update it:", err)
+	//		return
+	//	}
+	//	for userID, rooms := range existingChats {
+	//		if _, ok := user.bridge.ParsePuppetMXID(userID); !ok {
+	//			// This is not a ghost user, include it in the new list
+	//			chats[userID] = rooms
+	//		} else if _, ok := chats[userID]; !ok && method == http.MethodPatch {
+	//			// This is a ghost user, but we're not replacing the whole list, so include it too
+	//			chats[userID] = rooms
+	//		}
+	//	}
+	//	err = intent.SetAccountData(event.AccountDataDirectChats.Type, &chats)
+	//}
+	//if err != nil {
+	//	user.log.Warnln("Failed to update m.direct list:", err)
+	//}
+}
+
 //func (user *User) HandleContactList(contacts []whatsapp.Contact) {
 //	contactMap := make(map[string]whatsapp.Contact)
 //	for _, contact := range contacts {
