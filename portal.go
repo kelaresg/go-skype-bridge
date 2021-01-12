@@ -342,7 +342,7 @@ func (portal *Portal) getMessageIntentSkype(user *User, info skype.Resource) *ap
 }
 
 func (portal *Portal) handlePrivateChatFromMe(fromMe bool) func() {
-	if portal.IsPrivateChat() && fromMe {
+	if portal.IsPrivateChat() && fromMe && len(portal.bridge.Config.Bridge.LoginSharedSecret) == 0 {
 		var privateChatPuppet *Puppet
 		var privateChatPuppetInvited bool
 		privateChatPuppet = portal.bridge.GetPuppetByJID(portal.Key.Receiver)
@@ -924,7 +924,9 @@ func (portal *Portal) beginBackfill() func() {
 		portal.privateChatBackfillInvitePuppet = nil
 		portal.backfillLock.Unlock()
 		if privateChatPuppet != nil && privateChatPuppetInvited {
-			//_, _ = privateChatPuppet.DefaultIntent().LeaveRoom(portal.MXID)
+			if len(portal.bridge.Config.Bridge.LoginSharedSecret) > 0 {
+				_, _ = privateChatPuppet.DefaultIntent().LeaveRoom(portal.MXID)
+			}
 		}
 	}
 }
