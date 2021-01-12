@@ -81,7 +81,8 @@ func NewFormatter(bridge *Bridge) *Formatter {
 		},
 		mentionRegex: func(str string) string {
 			mxid, displayname := formatter.getMatrixInfoByJID(str[1:] + skypeExt.NewUserSuffix)
-			return fmt.Sprintf(`<a href="https://matrix.to/#/%s">%s</a>`, mxid, displayname)
+			mxid = id.UserID(html.EscapeString(string(mxid)))
+			return fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, bridge.Config.Homeserver.Domain, mxid, displayname)
 		},
 	}
 	formatter.waReplFuncText = map[*regexp.Regexp]func(string) string{
@@ -96,7 +97,8 @@ func NewFormatter(bridge *Bridge) *Formatter {
 				}
 			}
 			//mxid, displayname := formatter.getMatrixInfoByJID(str[1:] + whatsappExt.NewUserSuffix)
-			return fmt.Sprintf(`<a href="https://matrix.to/#/%s">%s</a>`, mxid, displayname)
+			mxid = id.UserID(html.EscapeString(string(mxid)))
+			return fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, bridge.Config.Homeserver.Domain, mxid, displayname)
 			// _, displayname = formatter.getMatrixInfoByJID(str[1:] + whatsappExt.NewUserSuffix)
 			//fmt.Println("ParseWhatsAp4", displayname)
 			//return displayname
@@ -136,7 +138,7 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
 		if len(matches) > 0 {
 			for _, match := range matches {
 				mxid, displayname = formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
-				content.FormattedBody = strings.ReplaceAll(content.Body, match[0], fmt.Sprintf(`<a href="https://matrix.to/#/%s">%s</a>`, mxid, displayname))
+				content.FormattedBody = strings.ReplaceAll(content.Body, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
 				content.Body = content.FormattedBody
 			}
 		}
@@ -151,7 +153,7 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
 				//href1 := fmt.Sprintf(`https://matrix.to/#/!kpouCkfhzvXgbIJmkP:oliver.matrix.host/$fHQNRydqqqAVS8usHRmXn0nIBM_FC-lo2wI2Uol7wu8?via=oliver.matrix.host`)
 				href1 := ""
 				//mxid `@skype&8-live-xxxxxx:name.matrix.server`
-				href2 := fmt.Sprintf(`https://matrix.to/#/%s`, mxid)
+				href2 := fmt.Sprintf(`https://%s/#/%s`, formatter.bridge.Config.Homeserver.Domain, mxid)
 				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s"></a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>%s`,
 					href1,
 					href2,

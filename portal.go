@@ -1895,7 +1895,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 	//replyToID := content.GetReplyTo()
 	var newContent string
 	//if len(replyToID) > 0 {
-		rQuote := regexp.MustCompile(`<mx-reply><blockquote><a[^>]+\bhref="(.*?)://matrix\.to/#/@([^"]+):(.*?)">(.*?)<br>([^"]+)</blockquote></mx-reply>(.*)`)
+		rQuote := regexp.MustCompile(`<mx-reply><blockquote><a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain  + `/#/@([^"]+):(.*?)">(.*?)<br>([^"]+)</blockquote></mx-reply>(.*)`)
 		quoteMatches := rQuote.FindAllStringSubmatch(content.FormattedBody, -1)
 		fmt.Println("matches0: ", content.FormattedBody)
 		fmt.Println("matches1: ", quoteMatches)
@@ -1904,7 +1904,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 				if len(match) > 2 {
 					var skyId string
 					if strings.Index(match[4], "@skype") > -1 {
-						skyId = strings.ReplaceAll(match[2], "skype&amp;", "")
+						skyId = patch.ParseLocalPart(html.UnescapeString(match[2]), false)
 						skyId = strings.ReplaceAll(skyId, "skype&", "")
 						skyId = strings.ReplaceAll(skyId, "-", ":")
 					} else {
@@ -1970,13 +1970,16 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			text = "/me " + text
 		}
 		if len(content.FormattedBody) > 0 {
-			r := regexp.MustCompile(`<a[^>]+\bhref="(.*?)://matrix\.to/#/@skype&amp;([^"]+):(.*?)">(.*?)</a>*`)
+			//r := regexp.MustCompile(`<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@skype&amp;([^"]+):(.*?)">(.*?)</a>*`)
+			r := regexp.MustCompile(`<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@([^"]+):(.*?)">(.*?)</a>*`)
 			matches := r.FindAllStringSubmatch(content.FormattedBody, -1)
 			fmt.Println("matches: ", matches)
 			if len(matches) > 0 {
 				for _, match := range matches {
 					if len(match) > 2 {
-						skyId := strings.ReplaceAll(match[2], "-", ":")
+						skyId := patch.ParseLocalPart(html.UnescapeString(match[2]), false)
+						skyId = strings.ReplaceAll(skyId, "skype&", "")
+						skyId = strings.ReplaceAll(skyId, "-", ":")
 						content.FormattedBody = strings.ReplaceAll(content.FormattedBody, match[0], fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
 					}
 				}
