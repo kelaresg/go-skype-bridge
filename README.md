@@ -20,6 +20,7 @@ matrix-skype is a library for bridging matrix and skype, about matrix, please re
 * Typing status
 
 The skype api lib of matrix-skype is [go-skypeapi](https://github.com/kelaresg/go-skypeapi).  
+[matrix room(#goskypebridge:matrix.org)](https://app.element.io/#/room/#goskypebridge:matrix.org)
 
 This matrix-skype bridge is based on [mautrix-whatsapp](https://github.com/tulir/mautrix-whatsapp),so the installation and usage methods are very similar to mautrix-whatsapp(matrix-skype currently does not support docker installation)
 
