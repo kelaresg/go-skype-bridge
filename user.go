@@ -398,6 +398,7 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
 	user.addToJIDMap()
 	_ = ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
+	user.PostLogin()
 	return
 }
 
