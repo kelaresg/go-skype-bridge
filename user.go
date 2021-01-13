@@ -532,6 +532,10 @@ func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll b
 		if chat.Id == "48:calllogs" {
 			continue
 		}
+		// Filter starred(bookmarks)
+		if chat.Id == "48:starred" {
+			continue
+		}
 		// Filter conversations that have not sent messages
 		if chat.LastMessage.Id == "" {
 			continue
