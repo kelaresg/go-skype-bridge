@@ -79,30 +79,8 @@ func NewFormatter(bridge *Bridge) *Formatter {
 			}
 			return fmt.Sprintf("<code>%s</code>", str)
 		},
-		mentionRegex: func(str string) string {
-			mxid, displayname := formatter.getMatrixInfoByJID(str[1:] + skypeExt.NewUserSuffix)
-			mxid = id.UserID(html.EscapeString(string(mxid)))
-			return fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, bridge.Config.Homeserver.Domain, mxid, displayname)
-		},
 	}
 	formatter.waReplFuncText = map[*regexp.Regexp]func(string) string{
-		mentionRegex: func(str string) string {
-			r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
-			matches := r.FindAllStringSubmatch(str, -1)
-			displayname := ""
-			var mxid id.UserID
-			if len(matches) > 0 {
-				for _, match := range matches {
-					mxid, displayname = formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
-				}
-			}
-			//mxid, displayname := formatter.getMatrixInfoByJID(str[1:] + whatsappExt.NewUserSuffix)
-			mxid = id.UserID(html.EscapeString(string(mxid)))
-			return fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, bridge.Config.Homeserver.Domain, mxid, displayname)
-			// _, displayname = formatter.getMatrixInfoByJID(str[1:] + whatsappExt.NewUserSuffix)
-			//fmt.Println("ParseWhatsAp4", displayname)
-			//return displayname
-		},
 	}
 	return formatter
 }
@@ -119,29 +97,39 @@ func (formatter *Formatter) getMatrixInfoByJID(jid types.SkypeID) (mxid id.UserI
 }
 
 func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
-	output := html.EscapeString(content.Body)
+	// parse a tag
+	reg:= regexp.MustCompile(`(?U)(<a .*>(.*)</a>)`)
+	bodyMatch := reg.FindAllStringSubmatch(content.Body, -1)
+	for _, match := range bodyMatch {
+		content.Body = strings.ReplaceAll(content.Body, match[1], match[2])
+	}
+
+	output := content.Body
 	for regex, replacement := range formatter.waReplString {
 		output = regex.ReplaceAllString(output, replacement)
 	}
 	for regex, replacer := range formatter.waReplFunc {
 		output = regex.ReplaceAllStringFunc(output, replacer)
 	}
+	content.Body = html.UnescapeString(content.Body)
+
+	// parse @user message
+	r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
+	matches := r.FindAllStringSubmatch(content.Body, -1)
+	displayname := ""
+	var mxid id.UserID
+	if len(matches) > 0 {
+		for _, match := range matches {
+			mxid, displayname = formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
+			number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
+			output = strings.ReplaceAll(content.Body, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
+			content.Body = strings.Replace(content.Body, number, displayname, -1)
+		}
+	}
+
 	if output != content.Body {
 		output = strings.Replace(output, "\n", "<br/>", -1)
-		content.Body = html.UnescapeString(content.Body) // skype messages arrive escaped which causes element rendering issues #1
-
-		// parse @user message
-		r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
-		matches := r.FindAllStringSubmatch(content.Body, -1)
-		displayname := ""
-		var mxid id.UserID
-		if len(matches) > 0 {
-			for _, match := range matches {
-				mxid, displayname = formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
-				content.FormattedBody = strings.ReplaceAll(content.Body, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
-				content.Body = content.FormattedBody
-			}
-		}
+		content.FormattedBody = output
 
 		// parse quote message
 		content.Body = strings.ReplaceAll(content.Body, "\n", "")
