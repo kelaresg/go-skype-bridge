@@ -113,54 +113,64 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 	}
 	content.Body = html.UnescapeString(content.Body)
 
-	// parse mention user message
-	r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
-	matches := r.FindAllStringSubmatch(content.Body, -1)
-	displayname := ""
-	var mxid id.UserID
-	if len(matches) > 0 {
-		for _, match := range matches {
-			mxid, displayname = formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
-			number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
-			output = strings.ReplaceAll(content.Body, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
-			content.Body = strings.Replace(content.Body, number, displayname, -1)
-		}
-	}
-
+	var backStr string
 	if output != content.Body {
 		output = strings.Replace(output, "\n", "<br/>", -1)
 		content.FormattedBody = output
 		content.Format = event.FormatHTML
+		var mxid id.UserID
 
 		// parse quote message(set reply)
 		content.Body = strings.ReplaceAll(content.Body, "\n", "")
 		quoteReg := regexp.MustCompile(`<quote[^>]+\bauthor="([^"]+)" authorname="([^"]+)" timestamp="([^"]+)" conversation.* messageid="([^"]+)".*>.*?</legacyquote>(.*?)<legacyquote>.*?</legacyquote></quote>(.*)`)
 		quoteMatches := quoteReg.FindAllStringSubmatch(content.Body, -1)
+
 		if len(quoteMatches) > 0 {
 			for _, match := range quoteMatches {
+				for index, a := range match {
+					fmt.Println("index: ", index)
+					fmt.Println("ParseSkype quoteMatches a:", a)
+					fmt.Println()
+				}
 				msgMXID := ""
 				msg := formatter.bridge.DB.Message.GetByID(match[4])
 				if msg != nil {
 					msgMXID = string(msg.MXID)
 				}
-				mxid, displayname = formatter.getMatrixInfoByJID("8:" + match[1] + skypeExt.NewUserSuffix)
+				mxid, _ = formatter.getMatrixInfoByJID("8:" + match[1] + skypeExt.NewUserSuffix)
 				href1 := fmt.Sprintf(`https://%s/#/room/%s/%s?via=%s`, formatter.bridge.Config.Homeserver.Domain, RoomMXID, msgMXID, formatter.bridge.Config.Homeserver.Domain)
 				href2 := fmt.Sprintf(`https://%s/#/user/%s`, formatter.bridge.Config.Homeserver.Domain, mxid)
-				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s">In reply to</a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>%s`,
+				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s">In reply to</a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>`,
 					href1,
 					href2,
 					mxid,
-					match[5],
-					match[6])
+					match[5])
 				content.FormattedBody = newContent
-				content.Body = fmt.Sprintf("> <%s> %s\n\n%s", mxid, match[5], match[6])
+				content.Body = fmt.Sprintf("> <%s> %s\n\n", mxid, match[5])
 				inRelateTo := &event.RelatesTo{
 					Type: event.RelReply,
 					EventID: id.EventID(msgMXID),
 				}
 				content.SetRelatesTo(inRelateTo)
+				backStr = match[6]
 			}
 		}
+	}
+
+	// parse mention user message
+	r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
+	matches := r.FindAllStringSubmatch(backStr, -1)
+	if len(matches) > 0 {
+		for _, match := range matches {
+			mxid, displayname := formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
+			number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
+			output = strings.ReplaceAll(backStr, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
+			content.FormattedBody = content.FormattedBody + output
+			content.Body = content.Body + strings.Replace(backStr, number, displayname, -1)
+		}
+	} else {
+		content.Body = content.Body + backStr
+		content.FormattedBody = content.FormattedBody + backStr
 	}
 }
 

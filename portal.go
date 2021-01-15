@@ -5,7 +5,6 @@ import (
 	"maunium.net/go/mautrix/patch"
 
 	"encoding/hex"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	skype "github.com/kelaresg/go-skypeapi"
@@ -293,7 +292,8 @@ func (portal *Portal) markHandledSkype(source *User, message *skype.Resource, mx
 		//	msg.Sender = message.Jid
 		//}
 	}
-	msg.Content = message
+
+	msg.Content = message.Content
 	if len(message.Id)>0 {
 		msg.ID = message.Id
 	}
@@ -1890,9 +1890,6 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 		return nil, sender, content
 	}
 
-	//ts := uint64(evt.Timestamp / 1000)
-	//status := waProto.WebMessageInfo_ERROR
-	//fromMe := true
 	currentTimeNanoStr := strconv.FormatInt(time.Now().UnixNano(), 10)
 	currentTimeNanoStr = currentTimeNanoStr[:len(currentTimeNanoStr)-3]
 	clientMessageId := currentTimeNanoStr + fmt.Sprintf("%04v", rand.New(rand.NewSource(time.Now().UnixNano())).Intn(10000))
@@ -1902,53 +1899,51 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 		Timestamp: time.Now().Unix(),
 	}
 	//ctxInfo := &waProto.ContextInfo{}
-	//replyToID := content.GetReplyTo()
+	replyToID := content.GetReplyTo()
 	var newContent string
-	//if len(replyToID) > 0 {
-		rQuote := regexp.MustCompile(`<mx-reply><blockquote><a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@([^"]+):(.*?)">(.*?)<br>([^"]+)</blockquote></mx-reply>(.*)`)
-		quoteMatches := rQuote.FindAllStringSubmatch(content.FormattedBody, -1)
-		fmt.Println("matches0: ", content.FormattedBody)
-		fmt.Println("matches1: ", quoteMatches)
-		if len(quoteMatches) > 0 {
-			for _, match := range quoteMatches {
-				if len(match) > 2 {
-					var skyId string
-					if strings.Index(match[4], "@skype") > -1 {
-						skyId = patch.ParseLocalPart(html.UnescapeString(match[2]), false)
-						skyId = strings.ReplaceAll(skyId, "skype&", "")
-						skyId = strings.ReplaceAll(skyId, "-", ":")
-					} else {
-						skyId = strings.ReplaceAll(sender.JID, skypeExt.NewUserSuffix, "")
-					}
-					if len(skyId) < 2 {
-						continue
-					}
 
-					skypeUsername := strings.Replace(skyId, "8:", "", 1)
-					puppet := sender.bridge.GetPuppetByJID(skyId + skypeExt.NewUserSuffix)
-					time.Now().Unix()
-					newContent = fmt.Sprintf(`<quote author="%s" authorname="%s↵" timestamp="%s" conversation="%s" messageid="%s" cuid="%s"><legacyquote>[%s] %s↵: </legacyquote>%s<legacyquote>↵↵&lt;&lt;&lt; </legacyquote></quote>%s`,
-						skypeUsername,
-						puppet.Displayname,
-						strconv.Itoa(int(time.Now().Unix())),
-						portal.Key.JID,
-						time.Now().UnixNano() / 1e6,
-						strconv.Itoa(int(time.Now().UnixNano())) + "1",
-						time.Now().Unix(),
-						puppet.Displayname,
-						match[5],
-						match[6])
-					content.FormattedBody = newContent
-				}
+	if len(replyToID) > 0 {
+		rQuote := regexp.MustCompile(`<mx-reply>(.*?)</mx-reply>(.*)`)
+		quoteMatches := rQuote.FindAllStringSubmatch(content.FormattedBody, -1)
+		backStr := ""
+		if len(quoteMatches) > 0 {
+			if len(quoteMatches[0]) > 2 {
+				backStr = quoteMatches[0][2]
 			}
 		}
+
 		content.RemoveReplyFallback()
-		//if len(newContent) > 0 {
-		//	newContent = content.Body
-		//}
-		//content.FormattedBody = newContent
-		//msg := portal.bridge.DB.Message.GetByMXID(replyToID)
-	//}
+		msg := portal.bridge.DB.Message.GetByMXID(replyToID)
+		if msg != nil && len(msg.Content) > 0 {
+			messageId := msg.ID
+			if len(messageId) < 1 {
+				messageId = strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+			}
+			author := strings.Replace(msg.Sender, skypeExt.NewUserSuffix, "", 1)
+			author = strings.Replace(author, "8:", "", 1)
+			conversation := msg.Chat.Receiver
+			cuid := msg.JID
+			r := []rune(messageId)
+			timestamp := string(r[:len(r) - 3])
+			quoteMessage := msg.Content
+
+			puppet := sender.bridge.GetPuppetByJID(msg.Sender)
+
+			newContent = fmt.Sprintf(`<quote author="%s" authorname="%s" timestamp="%s" conversation="%s" messageid="%s" cuid="%s"><legacyquote>[%s] %s: </legacyquote>%s<legacyquote>\n\n&lt;&lt;&lt; </legacyquote></quote>%s`,
+				author,
+				puppet.Displayname,
+				timestamp,
+				conversation,
+				messageId,
+				cuid,
+				timestamp,
+				puppet.Displayname,
+				quoteMessage,
+				backStr)
+			content.FormattedBody = newContent
+		}
+	}
+
 	relaybotFormatted := false
 	if sender.NeedsRelaybot(portal) {
 		if !portal.HasRelaybot() {
@@ -2115,24 +2110,20 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 		fmt.Println("portal HandleMatrixMessage info is nil: ")
 		return
 	}
-	infoRaw, err := json.Marshal(info)
-	if err != nil {
-		fmt.Println("portal HandleMatrixMessage Marshal info err: ", err)
-		return
-	}
+
 	fmt.Println("portal HandleMatrixMessage start markHandledSkype: ")
 	portal.markHandledSkype(sender, &skype.Resource{
 		ClientMessageId: info.ClientMessageId,
 		Jid: portal.Key.JID,//receiver id(conversation id)
 		Timestamp: time.Now().Unix(),
-		Content: string(infoRaw),
+		Content: info.Content,
 	}, evt.ID)
 	portal.log.Debugln("Sending event", evt.ID, "to Skype")
 
 	errChan := make(chan error, 1)
 	//go sender.Conn.Conn.SendMsg(portal.Key.JID, info.Content, info.ClientMessageId, errChan)
 	go SendMsg(sender, portal.Key.JID, info, errChan)
-
+	var err error
 	var errorEventID id.EventID
 	select {
 	case err = <-errChan:

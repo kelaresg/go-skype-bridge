@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	skype "github.com/kelaresg/go-skypeapi"
-
 	log "maunium.net/go/maulogger/v2"
 
 	"github.com/kelaresg/matrix-skype/types"
@@ -84,7 +82,7 @@ type Message struct {
 	MXID      id.EventID
 	Sender    types.SkypeID
 	Timestamp uint64
-	Content   *skype.Resource
+	Content   string
 }
 
 func (msg *Message) Scan(row Scannable) *Message {
@@ -103,7 +101,8 @@ func (msg *Message) Scan(row Scannable) *Message {
 }
 
 func (msg *Message) decodeBinaryContent(content []byte) {
-	msg.Content = &skype.Resource{}
+	//msg.Content = &skype.Resource{}
+	msg.Content = ""
 	reader := bytes.NewReader(content)
 	dec := json.NewDecoder(reader)
 	err := dec.Decode(&msg.Content)
