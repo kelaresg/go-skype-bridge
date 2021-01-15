@@ -51,6 +51,11 @@ func (mq *MessageQuery) GetByMXID(mxid id.EventID) *Message {
 		"FROM message WHERE mxid=$1", mxid)
 }
 
+func (mq *MessageQuery) GetByID(id string) *Message {
+	return mq.get("SELECT id, chat_jid, chat_receiver, jid, mxid, sender, timestamp, content " +
+		"FROM message WHERE id=$1", id)
+}
+
 func (mq *MessageQuery) GetLastInChat(chat PortalKey) *Message {
 	msg := mq.get("SELECT id, chat_jid, chat_receiver, jid, mxid, sender, timestamp, content " +
 		"FROM message WHERE chat_jid=$1 AND chat_receiver=$2 ORDER BY timestamp DESC LIMIT 1", chat.JID, chat.Receiver)

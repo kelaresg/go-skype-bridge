@@ -298,8 +298,8 @@ func (portal *Portal) markHandledSkype(source *User, message *skype.Resource, mx
 		msg.ID = message.Id
 	}
 	msg.Insert()
-fmt.Println("markHandledSkype1", msg.Chat.JID)
-fmt.Println("markHandledSkype2", msg.JID)
+	fmt.Println("markHandledSkype1", msg.Chat.JID)
+	fmt.Println("markHandledSkype2", msg.JID)
 	portal.recentlyHandledLock.Lock()
 	index := portal.recentlyHandledIndex
 	portal.recentlyHandledIndex = (portal.recentlyHandledIndex + 1) % recentlyHandledLength
@@ -1317,6 +1317,16 @@ func (portal *Portal) SetReplySkype(content *event.MessageEventContent, info sky
 			portal.log.Warnln("Failed to get reply target:", err)
 			return
 		}
+		if evt.Type == event.EventEncrypted {
+			_ = evt.Content.ParseRaw(evt.Type)
+			decryptedEvt, err := portal.bridge.Crypto.Decrypt(evt)
+			if err != nil {
+				portal.log.Warnln("Failed to decrypt reply target:", err)
+			} else {
+				evt = decryptedEvt
+			}
+		}
+		_ = evt.Content.ParseRaw(evt.Type)
 		content.SetReply(evt)
 	}
 	return
@@ -1450,8 +1460,8 @@ func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 			MsgType: event.MsgText,
 		}
 
-		portal.bridge.Formatter.ParseSkype(content)
-		portal.SetReplySkype(content, message)
+		portal.bridge.Formatter.ParseSkype(content, portal.MXID)
+		// portal.SetReplySkype(content, message)
 
 		fmt.Println()
 		fmt.Printf("portal HandleTextMessage2: %+v", content)
@@ -1492,7 +1502,7 @@ func (portal *Portal) HandleLocationMessageSkype(source *User, message skype.Res
 		GeoURI:        geo,
 	}
 
-	portal.SetReplySkype(content, message)
+	// portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
 	resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
@@ -1522,7 +1532,7 @@ func (portal *Portal) HandleContactMessageSkype(source *User, message skype.Reso
 		MsgType: event.MsgText,
 	}
 
-	portal.SetReplySkype(content, message)
+	// portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
 	resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
@@ -1659,7 +1669,7 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 	} else {
 		content.URL = uploaded.ContentURI.CUString()
 	}
-	portal.SetReplySkype(content, info)
+	// portal.SetReplySkype(content, info)
 
 	fmt.Println()
 	fmt.Println("mediaMessage.UrlThumbnail", mediaMessage.UrlThumbnail)

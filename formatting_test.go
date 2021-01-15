@@ -87,7 +87,7 @@ func TestFormatter_ParseSkype(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testFormatter.ParseSkype(tt.args.content)
+			testFormatter.ParseSkype(tt.args.content, "")
 			if !reflect.DeepEqual(tt.args.content, tt.expect.content) {
 				t.Errorf("content = %v, wanted %v", tt.args.content, tt.expect.content)
 			}

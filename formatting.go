@@ -96,8 +96,8 @@ func (formatter *Formatter) getMatrixInfoByJID(jid types.SkypeID) (mxid id.UserI
 	return
 }
 
-func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
-	// parse a tag
+func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomMXID id.RoomID) {
+	// parse '<a><a/>' tag
 	reg:= regexp.MustCompile(`(?U)(<a .*>(.*)</a>)`)
 	bodyMatch := reg.FindAllStringSubmatch(content.Body, -1)
 	for _, match := range bodyMatch {
@@ -113,7 +113,7 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
 	}
 	content.Body = html.UnescapeString(content.Body)
 
-	// parse @user message
+	// parse mention user message
 	r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
 	matches := r.FindAllStringSubmatch(content.Body, -1)
 	displayname := ""
@@ -130,30 +130,37 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
 	if output != content.Body {
 		output = strings.Replace(output, "\n", "<br/>", -1)
 		content.FormattedBody = output
+		content.Format = event.FormatHTML
 
-		// parse quote message
+		// parse quote message(set reply)
 		content.Body = strings.ReplaceAll(content.Body, "\n", "")
-		quoteReg := regexp.MustCompile(`<quote[^>]+\bauthor="([^"]+)" authorname="([^"]+)" timestamp="([^"]+)".*>.*?</legacyquote>(.*?)<legacyquote>.*?</legacyquote></quote>(.*)`)
+		quoteReg := regexp.MustCompile(`<quote[^>]+\bauthor="([^"]+)" authorname="([^"]+)" timestamp="([^"]+)" conversation.* messageid="([^"]+)".*>.*?</legacyquote>(.*?)<legacyquote>.*?</legacyquote></quote>(.*)`)
 		quoteMatches := quoteReg.FindAllStringSubmatch(content.Body, -1)
 		if len(quoteMatches) > 0 {
 			for _, match := range quoteMatches {
+				msgMXID := ""
+				msg := formatter.bridge.DB.Message.GetByID(match[4])
+				if msg != nil {
+					msgMXID = string(msg.MXID)
+				}
 				mxid, displayname = formatter.getMatrixInfoByJID("8:" + match[1] + skypeExt.NewUserSuffix)
-				//href1 := fmt.Sprintf(`https://matrix.to/#/!kpouCkfhzvXgbIJmkP:oliver.matrix.host/$fHQNRydqqqAVS8usHRmXn0nIBM_FC-lo2wI2Uol7wu8?via=oliver.matrix.host`)
-				href1 := ""
-				//mxid `@skype&8-live-xxxxxx:name.matrix.server`
-				href2 := fmt.Sprintf(`https://%s/#/%s`, formatter.bridge.Config.Homeserver.Domain, mxid)
-				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s"></a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>%s`,
+				href1 := fmt.Sprintf(`https://%s/#/room/%s/%s?via=%s`, formatter.bridge.Config.Homeserver.Domain, RoomMXID, msgMXID, formatter.bridge.Config.Homeserver.Domain)
+				href2 := fmt.Sprintf(`https://%s/#/user/%s`, formatter.bridge.Config.Homeserver.Domain, mxid)
+				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s">In reply to</a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>%s`,
 					href1,
 					href2,
 					mxid,
-					match[4],
-					match[5])
+					match[5],
+					match[6])
 				content.FormattedBody = newContent
-				content.Body = match[4] + "\n" + match[5]
+				content.Body = fmt.Sprintf("> <%s> %s\n\n%s", mxid, match[5], match[6])
+				inRelateTo := &event.RelatesTo{
+					Type: event.RelReply,
+					EventID: id.EventID(msgMXID),
+				}
+				content.SetRelatesTo(inRelateTo)
 			}
 		}
-
-		content.Format = event.FormatHTML
 	}
 }
 
