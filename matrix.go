@@ -257,7 +257,7 @@ func (mx *MatrixHandler) HandleMembership(evt *event.Event) {
 	}
 
 	user := mx.bridge.GetUserByMXID(evt.Sender)
-	if user == nil || !user.Whitelisted || !user.IsConnected() {
+	if user == nil || user.Conn == nil || !user.Whitelisted || !user.IsConnected() {
 		return
 	}
 
@@ -307,7 +307,7 @@ func (mx *MatrixHandler) HandleRoomMetadata(evt *event.Event) {
 	}
 
 	portal := mx.bridge.GetPortalByMXID(evt.RoomID)
-	if portal == nil || portal.IsPrivateChat() {
+	if user.Conn == nil || portal == nil || portal.IsPrivateChat() {
 		return
 	}
 
@@ -374,9 +374,6 @@ func (mx *MatrixHandler) shouldIgnoreEvent(evt *event.Event) bool {
 	fmt.Println()
 	fmt.Printf("shouldIgnoreEvent: user%+v", *user)
 	fmt.Println()
-	if user.Conn == nil {
-		return true
-	}
 	if !user.RelaybotWhitelisted {
 		fmt.Println("user.RelaybotWhitelisted true", user.RelaybotWhitelisted)
 		return true
@@ -424,7 +421,7 @@ func (mx *MatrixHandler) HandleMessage(evt *event.Event) {
 	fmt.Println()
 	fmt.Printf("HandleMessage portal: %+v", portal)
 	fmt.Println()
-	if portal != nil && (user.Whitelisted || portal.HasRelaybot()) {
+	if user.Conn != nil && portal != nil && (user.Whitelisted || portal.HasRelaybot()) {
 		portal.HandleMatrixMessage(user, evt)
 	}
 }
@@ -452,7 +449,7 @@ func (mx *MatrixHandler) HandleRedaction(evt *event.Event) {
 	}
 
 	portal := mx.bridge.GetPortalByMXID(evt.RoomID)
-	if portal != nil {
+	if user.Conn != nil && portal != nil {
 		portal.HandleMatrixRedaction(user, evt)
 	}
 }
