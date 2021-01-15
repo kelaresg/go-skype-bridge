@@ -374,6 +374,9 @@ func (mx *MatrixHandler) shouldIgnoreEvent(evt *event.Event) bool {
 	fmt.Println()
 	fmt.Printf("shouldIgnoreEvent: user%+v", *user)
 	fmt.Println()
+	if user.Conn == nil {
+		return true
+	}
 	if !user.RelaybotWhitelisted {
 		fmt.Println("user.RelaybotWhitelisted true", user.RelaybotWhitelisted)
 		return true
