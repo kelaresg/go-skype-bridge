@@ -2111,12 +2111,19 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 		return
 	}
 
+	var content string
+	if info.Type != string(event.MsgText) {
+		content = info.SendMediaMessage.FileName // URIObject
+	} else {
+		content = info.SendTextMessage.Content
+	}
+
 	fmt.Println("portal HandleMatrixMessage start markHandledSkype: ")
 	portal.markHandledSkype(sender, &skype.Resource{
 		ClientMessageId: info.ClientMessageId,
 		Jid: portal.Key.JID,//receiver id(conversation id)
 		Timestamp: time.Now().Unix(),
-		Content: info.Content,
+		Content: content,
 	}, evt.ID)
 	portal.log.Debugln("Sending event", evt.ID, "to Skype")
 
