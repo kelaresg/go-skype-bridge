@@ -1901,11 +1901,10 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 	//ctxInfo := &waProto.ContextInfo{}
 	replyToID := content.GetReplyTo()
 	var newContent string
-
+	backStr := ""
 	if len(replyToID) > 0 {
 		rQuote := regexp.MustCompile(`<mx-reply>(.*?)</mx-reply>(.*)`)
 		quoteMatches := rQuote.FindAllStringSubmatch(content.FormattedBody, -1)
-		backStr := ""
 		if len(quoteMatches) > 0 {
 			if len(quoteMatches[0]) > 2 {
 				backStr = quoteMatches[0][2]
@@ -1929,7 +1928,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 
 			puppet := sender.bridge.GetPuppetByJID(msg.Sender)
 
-			newContent = fmt.Sprintf(`<quote author="%s" authorname="%s" timestamp="%s" conversation="%s" messageid="%s" cuid="%s"><legacyquote>[%s] %s: </legacyquote>%s<legacyquote>\n\n&lt;&lt;&lt; </legacyquote></quote>%s`,
+			newContent = fmt.Sprintf(`<quote author="%s" authorname="%s" timestamp="%s" conversation="%s" messageid="%s" cuid="%s"><legacyquote>[%s] %s: </legacyquote>%s<legacyquote>\n\n&lt;&lt;&lt; </legacyquote></quote>`,
 				author,
 				puppet.Displayname,
 				timestamp,
@@ -1938,8 +1937,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 				cuid,
 				timestamp,
 				puppet.Displayname,
-				quoteMessage,
-				backStr)
+				quoteMessage)
 			content.FormattedBody = newContent
 		}
 	}
@@ -1975,9 +1973,12 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			text = "/me " + text
 		}
 		if len(content.FormattedBody) > 0 {
-			//r := regexp.MustCompile(`<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@skype&amp;([^"]+):(.*?)">(.*?)</a>*`)
-			r := regexp.MustCompile(`<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@([^"]+):(.*?)">(.*?)</a>*`)
-			matches := r.FindAllStringSubmatch(content.FormattedBody, -1)
+			matchStr := content.FormattedBody
+			if len(backStr) > 0 {
+				matchStr = backStr
+			}
+			r := regexp.MustCompile(`(?m)<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@([^"]+):(.*?)">(.*?)</a>`)
+			matches := r.FindAllStringSubmatch(matchStr, -1)
 			fmt.Println("matches: ", matches)
 			if len(matches) > 0 {
 				for _, match := range matches {
@@ -1986,9 +1987,18 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 						skyId = strings.ReplaceAll(skyId, "skype&", "")
 						skyId = strings.ReplaceAll(skyId, "-", ":")
 						// Adapt to the message format sent by the matrix front end
-						content.FormattedBody = strings.ReplaceAll(content.FormattedBody, match[0] + ":", fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
-						content.FormattedBody = strings.ReplaceAll(content.FormattedBody, match[0], fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
+						matchStr = strings.ReplaceAll(matchStr, match[0] + ":", fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
+						matchStr = strings.ReplaceAll(matchStr, match[0], fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
 					}
+				}
+				if len(backStr) > 0 {
+					content.FormattedBody = content.FormattedBody + matchStr
+				} else {
+					content.FormattedBody = matchStr
+				}
+			} else {
+				if len(backStr) > 0 {
+					content.FormattedBody = content.FormattedBody + backStr
 				}
 			}
 
