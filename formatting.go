@@ -158,8 +158,9 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 	}
 
 	// parse mention user message
-	r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
+	r := regexp.MustCompile(`(?m)<at[^>]+\bid="([^"]+)"(.*?)</at>`)
 	var originStr string
+	var originBodyStr string
 	if len(backStr) == 0 {
 		originStr = content.Body
 	} else {
@@ -170,15 +171,16 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 		for _, match := range matches {
 			mxid, displayname := formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
 			number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
-			output = strings.ReplaceAll(originStr, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
-			if len(backStr) == 0 {
-				content.Format = event.FormatHTML
-				content.Body = strings.Replace(originStr, number, displayname, -1)
-				content.FormattedBody = output
-			} else {
-				content.FormattedBody = content.FormattedBody + output
-				content.Body = content.Body + strings.Replace(backStr, number, displayname, -1)
-			}
+			originStr = strings.ReplaceAll(originStr, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
+			originBodyStr = strings.Replace(originStr, number, displayname, -1)
+		}
+		if len(backStr) == 0 {
+			content.Format = event.FormatHTML
+			content.Body = originBodyStr
+			content.FormattedBody = originStr
+		} else {
+			content.Body = content.Body + originBodyStr
+			content.FormattedBody = content.FormattedBody + originStr
 		}
 	} else {
 		content.Body = content.Body + backStr
