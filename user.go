@@ -398,6 +398,7 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
 	user.addToJIDMap()
 	_ = ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
+	user.PostLogin()
 	return
 }
 
@@ -529,6 +530,10 @@ func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll b
 		}
 		// Filter calllogs conversation
 		if chat.Id == "48:calllogs" {
+			continue
+		}
+		// Filter starred(bookmarks)
+		if chat.Id == "48:starred" {
 			continue
 		}
 		// Filter conversations that have not sent messages

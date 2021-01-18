@@ -79,28 +79,8 @@ func NewFormatter(bridge *Bridge) *Formatter {
 			}
 			return fmt.Sprintf("<code>%s</code>", str)
 		},
-		mentionRegex: func(str string) string {
-			mxid, displayname := formatter.getMatrixInfoByJID(str[1:] + skypeExt.NewUserSuffix)
-			return fmt.Sprintf(`<a href="https://matrix.to/#/%s">%s</a>`, mxid, displayname)
-		},
 	}
 	formatter.waReplFuncText = map[*regexp.Regexp]func(string) string{
-		mentionRegex: func(str string) string {
-			r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
-			matches := r.FindAllStringSubmatch(str, -1)
-			displayname := ""
-			var mxid id.UserID
-			if len(matches) > 0 {
-				for _, match := range matches {
-					mxid, displayname = formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
-				}
-			}
-			//mxid, displayname := formatter.getMatrixInfoByJID(str[1:] + whatsappExt.NewUserSuffix)
-			return fmt.Sprintf(`<a href="https://matrix.to/#/%s">%s</a>`, mxid, displayname)
-			// _, displayname = formatter.getMatrixInfoByJID(str[1:] + whatsappExt.NewUserSuffix)
-			//fmt.Println("ParseWhatsAp4", displayname)
-			//return displayname
-		},
 	}
 	return formatter
 }
@@ -116,54 +96,95 @@ func (formatter *Formatter) getMatrixInfoByJID(jid types.SkypeID) (mxid id.UserI
 	return
 }
 
-func (formatter *Formatter) ParseSkype(content *event.MessageEventContent) {
-	output := html.EscapeString(content.Body)
+func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomMXID id.RoomID) {
+	// parse '<a><a/>' tag
+	reg:= regexp.MustCompile(`(?U)(<a .*>(.*)</a>)`)
+	bodyMatch := reg.FindAllStringSubmatch(content.Body, -1)
+	for _, match := range bodyMatch {
+		content.Body = strings.ReplaceAll(content.Body, match[1], match[2])
+	}
+
+	output := content.Body
 	for regex, replacement := range formatter.waReplString {
 		output = regex.ReplaceAllString(output, replacement)
 	}
 	for regex, replacer := range formatter.waReplFunc {
 		output = regex.ReplaceAllStringFunc(output, replacer)
 	}
+	content.Body = html.UnescapeString(content.Body)
+
+	var backStr string
 	if output != content.Body {
 		output = strings.Replace(output, "\n", "<br/>", -1)
-		content.Body = html.UnescapeString(content.Body) // skype messages arrive escaped which causes element rendering issues #1
-
-		// parse @user message
-		r := regexp.MustCompile(`<at[^>]+\bid="([^"]+)"(.*?)</at>*`)
-		matches := r.FindAllStringSubmatch(content.Body, -1)
-		displayname := ""
+		content.FormattedBody = output
+		content.Format = event.FormatHTML
 		var mxid id.UserID
-		if len(matches) > 0 {
-			for _, match := range matches {
-				mxid, displayname = formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
-				content.FormattedBody = strings.ReplaceAll(content.Body, match[0], fmt.Sprintf(`<a href="https://matrix.to/#/%s">%s</a>`, mxid, displayname))
-				content.Body = content.FormattedBody
-			}
-		}
 
-		// parse quote message
+		// parse quote message(set reply)
 		content.Body = strings.ReplaceAll(content.Body, "\n", "")
-		quoteReg := regexp.MustCompile(`<quote[^>]+\bauthor="([^"]+)" authorname="([^"]+)" timestamp="([^"]+)".*>.*?</legacyquote>(.*?)<legacyquote>.*?</legacyquote></quote>(.*)`)
+		quoteReg := regexp.MustCompile(`<quote[^>]+\bauthor="([^"]+)" authorname="([^"]+)" timestamp="([^"]+)" conversation.* messageid="([^"]+)".*>.*?</legacyquote>(.*?)<legacyquote>.*?</legacyquote></quote>(.*)`)
 		quoteMatches := quoteReg.FindAllStringSubmatch(content.Body, -1)
+
 		if len(quoteMatches) > 0 {
 			for _, match := range quoteMatches {
-				mxid, displayname = formatter.getMatrixInfoByJID("8:" + match[1] + skypeExt.NewUserSuffix)
-				//href1 := fmt.Sprintf(`https://matrix.to/#/!kpouCkfhzvXgbIJmkP:oliver.matrix.host/$fHQNRydqqqAVS8usHRmXn0nIBM_FC-lo2wI2Uol7wu8?via=oliver.matrix.host`)
-				href1 := ""
-				//mxid `@skype&8-live-xxxxxx:name.matrix.server`
-				href2 := fmt.Sprintf(`https://matrix.to/#/%s`, mxid)
-				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s"></a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>%s`,
+				for index, a := range match {
+					fmt.Println("index: ", index)
+					fmt.Println("ParseSkype quoteMatches a:", a)
+					fmt.Println()
+				}
+				msgMXID := ""
+				msg := formatter.bridge.DB.Message.GetByID(match[4])
+				if msg != nil {
+					msgMXID = string(msg.MXID)
+				}
+				mxid, _ = formatter.getMatrixInfoByJID("8:" + match[1] + skypeExt.NewUserSuffix)
+				href1 := fmt.Sprintf(`https://%s/#/room/%s/%s?via=%s`, formatter.bridge.Config.Homeserver.Domain, RoomMXID, msgMXID, formatter.bridge.Config.Homeserver.Domain)
+				href2 := fmt.Sprintf(`https://%s/#/user/%s`, formatter.bridge.Config.Homeserver.Domain, mxid)
+				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s">In reply to</a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>`,
 					href1,
 					href2,
 					mxid,
-					match[4],
 					match[5])
 				content.FormattedBody = newContent
-				content.Body = match[4] + "\n" + match[5]
+				content.Body = fmt.Sprintf("> <%s> %s\n\n", mxid, match[5])
+				inRelateTo := &event.RelatesTo{
+					Type: event.RelReply,
+					EventID: id.EventID(msgMXID),
+				}
+				content.SetRelatesTo(inRelateTo)
+				backStr = match[6]
 			}
 		}
+	}
 
-		content.Format = event.FormatHTML
+	// parse mention user message
+	r := regexp.MustCompile(`(?m)<at[^>]+\bid="([^"]+)"(.*?)</at>`)
+	var originStr string
+	var originBodyStr string
+	if len(backStr) == 0 {
+		originStr = content.Body
+	} else {
+		originStr = backStr
+	}
+	matches := r.FindAllStringSubmatch(originStr, -1)
+	if len(matches) > 0 {
+		for _, match := range matches {
+			mxid, displayname := formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
+			number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
+			originStr = strings.ReplaceAll(originStr, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
+			originBodyStr = strings.Replace(originStr, number, displayname, -1)
+		}
+		if len(backStr) == 0 {
+			content.Format = event.FormatHTML
+			content.Body = originBodyStr
+			content.FormattedBody = originStr
+		} else {
+			content.Body = content.Body + originBodyStr
+			content.FormattedBody = content.FormattedBody + originStr
+		}
+	} else {
+		content.Body = content.Body + backStr
+		content.FormattedBody = content.FormattedBody + backStr
 	}
 }
 

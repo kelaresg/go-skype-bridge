@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	skype "github.com/kelaresg/go-skypeapi"
-
 	log "maunium.net/go/maulogger/v2"
 
 	"github.com/kelaresg/matrix-skype/types"
@@ -51,6 +49,11 @@ func (mq *MessageQuery) GetByMXID(mxid id.EventID) *Message {
 		"FROM message WHERE mxid=$1", mxid)
 }
 
+func (mq *MessageQuery) GetByID(id string) *Message {
+	return mq.get("SELECT id, chat_jid, chat_receiver, jid, mxid, sender, timestamp, content " +
+		"FROM message WHERE id=$1", id)
+}
+
 func (mq *MessageQuery) GetLastInChat(chat PortalKey) *Message {
 	msg := mq.get("SELECT id, chat_jid, chat_receiver, jid, mxid, sender, timestamp, content " +
 		"FROM message WHERE chat_jid=$1 AND chat_receiver=$2 ORDER BY timestamp DESC LIMIT 1", chat.JID, chat.Receiver)
@@ -79,7 +82,7 @@ type Message struct {
 	MXID      id.EventID
 	Sender    types.SkypeID
 	Timestamp uint64
-	Content   *skype.Resource
+	Content   string
 }
 
 func (msg *Message) Scan(row Scannable) *Message {
@@ -98,7 +101,8 @@ func (msg *Message) Scan(row Scannable) *Message {
 }
 
 func (msg *Message) decodeBinaryContent(content []byte) {
-	msg.Content = &skype.Resource{}
+	//msg.Content = &skype.Resource{}
+	msg.Content = ""
 	reader := bytes.NewReader(content)
 	dec := json.NewDecoder(reader)
 	err := dec.Decode(&msg.Content)
