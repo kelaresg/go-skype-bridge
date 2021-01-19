@@ -251,6 +251,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	if ce.User.Conn == nil {
 		return
 	}
+	_ = ce.User.Conn.GetConversations("", ce.User.bridge.Config.Bridge.InitialChatSync)
 	ce.User.Conn.LoggedIn = false
 	username := ""
 	password := ""
@@ -269,7 +270,22 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		Username: username,
 		Password: password,
 	}
+
 	portals := ce.User.GetPortals()
+	newPortals := ce.User.GetPortalsNew()
+	allPortals := newPortals[0:]
+	for _, portal := range portals {
+		var newPortalsHas bool
+		for _, newPortal := range newPortals {
+			if portal.Key == newPortal.Key {
+				newPortalsHas = true
+			}
+		}
+		if !newPortalsHas {
+			allPortals = append(allPortals, portal)
+		}
+	}
+
 	leave := func(portal *Portal) {
 		if len(portal.MXID) > 0 {
 			_, _ = portal.MainIntent().KickUser(portal.MXID, &mautrix.ReqKickUser{
@@ -278,7 +294,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 			})
 		}
 	}
-	for _, portal := range portals {
+	for _, portal := range allPortals {
 		leave(portal)
 	}
 	ce.Reply("Logged out successfully.")
