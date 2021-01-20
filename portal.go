@@ -1338,7 +1338,8 @@ func (portal *Portal) HandleMessageRevokeSkype(user *User, message skype.Resourc
 	if message.GetFromMe(user.Conn.Conn) {
 		if portal.IsPrivateChat() {
 			intent = portal.bridge.GetPuppetByJID(user.JID).CustomIntent()
-		} else {
+		}
+		if intent == nil {
 			intent = portal.bridge.GetPuppetByJID(user.JID).IntentFor(portal)
 		}
 	}
