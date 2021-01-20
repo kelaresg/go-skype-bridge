@@ -1463,16 +1463,18 @@ func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 		if len(message.SkypeEditedId) > 0 {
 			message.ClientMessageId = message.SkypeEditedId + message.Id
 			msg := source.bridge.DB.Message.GetByJID(portal.Key, message.SkypeEditedId)
-			inRelateTo := &event.RelatesTo{
-				Type: event.RelReplace,
-				EventID: msg.MXID,
-			}
-			content.SetRelatesTo(inRelateTo)
-			content.NewContent = &event.MessageEventContent{
-				MsgType: content.MsgType,
-				Body: content.Body,
-				FormattedBody: content.FormattedBody,
-				Format: content.Format,
+			if msg != nil && len(msg.MXID) > 0 {
+				inRelateTo := &event.RelatesTo{
+					Type: event.RelReplace,
+					EventID: msg.MXID,
+				}
+				content.SetRelatesTo(inRelateTo)
+				content.NewContent = &event.MessageEventContent{
+					MsgType: content.MsgType,
+					Body: content.Body,
+					FormattedBody: content.FormattedBody,
+					Format: content.Format,
+				}
 			}
 		}
 		// portal.SetReplySkype(content, message)
