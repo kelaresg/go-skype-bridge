@@ -186,6 +186,16 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 		content.Body = content.Body + backStr
 		content.FormattedBody = content.FormattedBody + backStr
 	}
+
+	//filter edit tag
+	e := regexp.MustCompile(`(<e_m a=".*></e_m>)`)
+	editMatches := e.FindAllStringSubmatch(content.Body, -1)
+	if len(editMatches) > 0 {
+		for _, match := range editMatches {
+			content.Body = strings.ReplaceAll(content.Body, match[0], "")
+			content.FormattedBody = strings.ReplaceAll(content.FormattedBody, match[0], "")
+		}
+	}
 }
 
 func (formatter *Formatter) ParseMatrix(html string) string {
