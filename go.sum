@@ -156,6 +156,10 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/kelaresg/go-skypeapi v0.1.2-0.20201126103218-226d1ec92858 h1:dHavsrpbaOA/fqwB39zndM1uHIy84EDKhldWajIcfJg=
 github.com/kelaresg/go-skypeapi v0.1.2-0.20201126103218-226d1ec92858/go.mod h1:2Mxwa2Flo+PKlVYEM4QBNgs408C/mUSBXRzAb6+B+Zg=
+github.com/kelaresg/go-skypeapi v0.1.2-0.20201211120317-8651f9f08575 h1:4M0mtPS+W+In2sjh/g+/gfagn7mMG6igvMOLl2zgiKc=
+github.com/kelaresg/go-skypeapi v0.1.2-0.20201211120317-8651f9f08575/go.mod h1:2Mxwa2Flo+PKlVYEM4QBNgs408C/mUSBXRzAb6+B+Zg=
+github.com/kelaresg/go-skypeapi v0.1.2-0.20210120095455-33c3f50415c4 h1:8tif5ndoTRHAOj4j2Ump9uyDaKoQ/W17dJ2K36G418U=
+github.com/kelaresg/go-skypeapi v0.1.2-0.20210120095455-33c3f50415c4/go.mod h1:2Mxwa2Flo+PKlVYEM4QBNgs408C/mUSBXRzAb6+B+Zg=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kkdai/bstream v0.0.0-20161212061736-f391b8402d23/go.mod h1:J+Gs4SYgM6CZQHDETBtE9HaSEkGmuNXF86RwHhHUvq4=
@@ -214,6 +218,8 @@ github.com/pidongqianqian/mautrix-go v0.7.3-0.20201126040927-dbde233d88f6 h1:A2W
 github.com/pidongqianqian/mautrix-go v0.7.3-0.20201126040927-dbde233d88f6/go.mod h1:TtVePxoEaw6+RZDKVajw66Yaj1lqLjH8l4FF3krsqWY=
 github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201126070406-7b13ac473bcc h1:wXc6kSKzzYrLgqJwaCgJvKZc4Qfq85/3TivSItUFuNk=
 github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201126070406-7b13ac473bcc/go.mod h1:TtVePxoEaw6+RZDKVajw66Yaj1lqLjH8l4FF3krsqWY=
+github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201208081810-787323a21113 h1:tetxcECwIGgb7Gl4AyY/9+MXmuUfp33FweuGU/Bb7AM=
+github.com/pidongqianqian/mautrix-go v0.8.0-rc.4.0.20201208081810-787323a21113/go.mod h1:TtVePxoEaw6+RZDKVajw66Yaj1lqLjH8l4FF3krsqWY=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

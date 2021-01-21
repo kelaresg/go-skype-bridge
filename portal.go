@@ -216,9 +216,6 @@ func (portal *Portal) handleMessage(msg PortalMessage) {
 		default:
 			portal.log.Warnln("Unknown message type:", reflect.TypeOf(msg.data))
 		}
-		if data.MessageType == "RichText" || data.MessageType == "Text" {
-			portal.HandleTextMessage(msg.source, data)
-		}
 	} else {
 		portal.log.Warnln("Unknown message type:", reflect.TypeOf(msg.data))
 	}
@@ -1341,7 +1338,8 @@ func (portal *Portal) HandleMessageRevokeSkype(user *User, message skype.Resourc
 	if message.GetFromMe(user.Conn.Conn) {
 		if portal.IsPrivateChat() {
 			intent = portal.bridge.GetPuppetByJID(user.JID).CustomIntent()
-		} else {
+		}
+		if intent == nil {
 			intent = portal.bridge.GetPuppetByJID(user.JID).IntentFor(portal)
 		}
 	}
@@ -1461,6 +1459,25 @@ func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 		}
 
 		portal.bridge.Formatter.ParseSkype(content, portal.MXID)
+
+		// reedit message
+		if len(message.SkypeEditedId) > 0 {
+			message.ClientMessageId = message.SkypeEditedId + message.Id
+			msg := source.bridge.DB.Message.GetByJID(portal.Key, message.SkypeEditedId)
+			if msg != nil && len(msg.MXID) > 0 {
+				inRelateTo := &event.RelatesTo{
+					Type: event.RelReplace,
+					EventID: msg.MXID,
+				}
+				content.SetRelatesTo(inRelateTo)
+				content.NewContent = &event.MessageEventContent{
+					MsgType: content.MsgType,
+					Body: content.Body,
+					FormattedBody: content.FormattedBody,
+					Format: content.Format,
+				}
+			}
+		}
 		// portal.SetReplySkype(content, message)
 
 		fmt.Println()
@@ -1898,8 +1915,52 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 		Jid: portal.Key.JID,//receiver id(conversation id)
 		Timestamp: time.Now().Unix(),
 	}
-	//ctxInfo := &waProto.ContextInfo{}
+
 	replyToID := content.GetReplyTo()
+
+	// reedit message
+	if content.NewContent != nil {
+		a := strings.Replace(sender.JID, skypeExt.NewUserSuffix, "", 1)
+		a = strings.Replace(a, "8:", "", 1)
+		tsMs := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+		r := []rune(tsMs)
+		ts := string(r[:len(r) - 3])
+		msg := portal.bridge.DB.Message.GetByMXID(content.RelatesTo.EventID)
+		if msg != nil && len(msg.JID) > 0 {
+			info.SkypeEditedId = msg.JID
+			//info.ClientMessageId = info.ClientMessageId + info.SkypeEditedId
+			content.Body = content.Body + fmt.Sprintf("<e_m a=\"%s\" ts_ms=\"%s\" ts=\"%s\" t=\"61\"></e_m>", a, tsMs, ts)
+			content.Body = strings.TrimPrefix(content.Body, " * ")
+			if len(content.FormattedBody) > 0 {
+				content.FormattedBody = content.FormattedBody + fmt.Sprintf("<e_m a=\"%s\" ts_ms=\"%s\" ts=\"%s\" t=\"61\"></e_m>", a, tsMs, ts)
+				content.FormattedBody = strings.TrimPrefix(content.FormattedBody, " * ")
+			}
+		}
+
+		// in reedit message we can't obtain the "relayId" from RelatesTo.EventID cause the matrix message doesn't put it in "RelatesTo".
+		// so i get relayId with use regexp, but it's not a good way,
+		// now there is no way to get relayId if reedit message with add a mention user
+		// TODO maybe we can record the relayId to DB
+		rQuote := regexp.MustCompile(`<mx-reply><blockquote><a href=".*#/room/` + string(portal.MXID) + `/(.*)\?via=.*">In reply to.*</blockquote></mx-reply>(.*)`)
+		quoteMatches := rQuote.FindAllStringSubmatch(content.FormattedBody, -1)
+		if len(replyToID) < 1 {
+			if len(quoteMatches) > 0 {
+				if len(quoteMatches[0]) > 0 {
+					replyToID = id.EventID(quoteMatches[0][1])
+				}
+
+				//Filter out the " * " in the matrix editing message (i don't why the matrix need a * in the edit message body)
+				if len(quoteMatches[0]) > 1 {
+					needReplace := quoteMatches[0][2]
+					afterReplace := strings.TrimPrefix(needReplace, " * ")
+					content.Body = strings.Replace(content.Body, needReplace, afterReplace, 1)
+					content.FormattedBody = strings.Replace(content.FormattedBody, needReplace, afterReplace, 1)
+				}
+			}
+		}
+	}
+
+	// reply message
 	var newContent string
 	backStr := ""
 	if len(replyToID) > 0 {
@@ -1959,8 +2020,10 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 	if evt.Type == event.EventSticker {
 		content.MsgType = event.MsgImage
 	}
+
 	fmt.Println("convertMatrixMessage content.MsgType: ", content.MsgType)
 	fmt.Println("convertMatrixMessage content.Body: ", content.Body)
+	fmt.Println("convertMatrixMessage content.NewBody: ", content.NewContent)
 	fmt.Println("convertMatrixMessage content.FormattedBody: ", content.FormattedBody)
 	info.Type = string(content.MsgType)
 	switch content.MsgType {
@@ -1977,6 +2040,8 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			if len(backStr) > 0 {
 				matchStr = backStr
 			}
+
+			// mention user message
 			r := regexp.MustCompile(`(?m)<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@([^"]+):(.*?)">(.*?)</a>`)
 			matches := r.FindAllStringSubmatch(matchStr, -1)
 			fmt.Println("matches: ", matches)
@@ -2001,7 +2066,9 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 					content.FormattedBody = content.FormattedBody + backStr
 				}
 			}
+		}
 
+		if len(content.FormattedBody) > 0 {
 			info.SendTextMessage = &skype.SendTextMessage{
 				Content : content.FormattedBody,
 			}
@@ -2010,18 +2077,6 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 				Content : content.Body,
 			}
 		}
-		//ctxInfo.MentionedJid = mentionRegex.FindAllString(text, -1)
-		//for index, mention := range ctxInfo.MentionedJid {
-		//	ctxInfo.MentionedJid[index] = mention[1:] + whatsappExt.NewUserSuffix
-		//}
-		//if ctxInfo.StanzaId != nil || ctxInfo.MentionedJid != nil {
-		//	info.Message.ExtendedTextMessage = &waProto.ExtendedTextMessage{
-		//		Text:        &text,
-		//		ContextInfo: ctxInfo,
-		//	}
-		//} else {
-		//	info.Message.Conversation = &text
-		//}
 	case event.MsgImage:
 		caption, fileSize , data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
 		//if media == nil {

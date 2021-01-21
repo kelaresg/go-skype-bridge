@@ -156,6 +156,28 @@ func (user *User) GetPortals() []*Portal {
 	return portals
 }
 
+func (user *User) GetPortalsNew() []*Portal {
+	keys := make([]database.PortalKey, len(user.Conn.Store.Chats))
+	i := 0
+	for jid, _ := range user.Conn.Store.Chats {
+		keys[i] = database.NewPortalKey(jid, user.JID)
+		i++
+	}
+
+	portals := make([]*Portal, len(keys))
+
+	user.bridge.portalsLock.Lock()
+	for i, key := range keys {
+		portal, ok := user.bridge.portalsByJID[key]
+		if !ok {
+			portal = user.bridge.loadDBPortal(user.bridge.DB.Portal.GetByJID(key), &key)
+		}
+		portals[i] = portal
+	}
+	user.bridge.portalsLock.Unlock()
+	return portals
+}
+
 func (bridge *Bridge) NewUser(dbUser *database.User) *User {
 	user := &User{
 		User:   dbUser,
@@ -394,9 +416,9 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	go user.Conn.Poll()
 
 	user.ConnectionErrors = 0
-	user.SetSession(user.Conn.LoginInfo)
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
 	user.addToJIDMap()
+	user.SetSession(user.Conn.LoginInfo)
 	_ = ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
 	user.PostLogin()
 	return
