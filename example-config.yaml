@@ -4,6 +4,8 @@ homeserver:
     address: https://example.com
     # The domain of the homeserver (for MXIDs, etc).
     domain: example.com
+    # If you don’t know what this is, no need to modify(for parse "mention user/reply message, etc")
+    server_name: matrix.to
 
 # Application service host/registration related details.
 # Changing these values requires regeneration of the registration.

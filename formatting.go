@@ -138,8 +138,8 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 					msgMXID = string(msg.MXID)
 				}
 				mxid, _ = formatter.getMatrixInfoByJID("8:" + match[1] + skypeExt.NewUserSuffix)
-				href1 := fmt.Sprintf(`https://%s/#/room/%s/%s?via=%s`, formatter.bridge.Config.Homeserver.Domain, RoomMXID, msgMXID, formatter.bridge.Config.Homeserver.Domain)
-				href2 := fmt.Sprintf(`https://%s/#/user/%s`, formatter.bridge.Config.Homeserver.Domain, mxid)
+				href1 := fmt.Sprintf(`https://%s/#/room/%s/%s?via=%s`, formatter.bridge.Config.Homeserver.ServerName, RoomMXID, msgMXID, formatter.bridge.Config.Homeserver.Domain)
+				href2 := fmt.Sprintf(`https://%s/#/user/%s`, formatter.bridge.Config.Homeserver.ServerName, mxid)
 				newContent := fmt.Sprintf(`<mx-reply><blockquote><a href="%s">In reply to</a> <a href="%s">%s</a><br>%s</blockquote></mx-reply>`,
 					href1,
 					href2,
@@ -170,9 +170,10 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 	if len(matches) > 0 {
 		for _, match := range matches {
 			mxid, displayname := formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
-			number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
-			originStr = strings.ReplaceAll(originStr, match[0], fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.Domain, mxid, displayname))
-			originBodyStr = strings.Replace(originStr, number, displayname, -1)
+			// number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
+			replaceStr := fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.ServerName, mxid, displayname)
+			originStr = strings.ReplaceAll(originStr, match[0], replaceStr)
+			originBodyStr = strings.ReplaceAll(originStr, replaceStr, displayname + ":")
 		}
 		if len(backStr) == 0 {
 			content.Format = event.FormatHTML

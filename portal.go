@@ -2042,7 +2042,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			}
 
 			// mention user message
-			r := regexp.MustCompile(`(?m)<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.Domain + `/#/@([^"]+):(.*?)">(.*?)</a>`)
+			r := regexp.MustCompile(`(?m)<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.ServerName + `/#/@([^"]+):(.*?)">(.*?)</a>`)
 			matches := r.FindAllStringSubmatch(matchStr, -1)
 			fmt.Println("matches: ", matches)
 			if len(matches) > 0 {
