@@ -360,13 +360,14 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 		go loopPresence(ce, user)
 	}
 	go user.Conn.Poll()
-
+	go user.Conn.GetInvites()
 	user.ConnectionErrors = 0
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
 	user.addToJIDMap()
 	user.SetSession(user.Conn.LoginInfo)
 	_ = ce.User.Conn.GetConversations("", user.bridge.Config.Bridge.InitialChatSync)
 	user.PostLogin()
+	go loopInvites(user)
 	return
 }
 
@@ -380,6 +381,41 @@ func loopPresence(ce *CommandEvent, user *User) {
 			puppet := user.bridge.GetPuppetByJID(cid)
 			_ = puppet.DefaultIntent().SetPresence(event.Presence(strings.ToLower(contact.Availability)))
 		}
+		time.Sleep(39 * time.Second)
+	}
+}
+
+func loopInvites(user *User) {
+	for {
+		fmt.Println("loopInvites 11111")
+		if user.Conn.LoggedIn == false {
+			break
+		}
+		user.Conn.Store.InvitesContactsLock.Lock()
+		for cid, contact := range user.Conn.Store.InvitesContacts {
+			fmt.Println("loopInvites 1111122", user.Conn.Store.InvitesContacts)
+			if contact.IsRequest {
+				puppet := user.bridge.GetPuppetByJID(contact.PersonId)
+				puppet.Sync(user, contact)
+				if len(user.MXID) < 1 || len(user.JID) < 1 {
+					fmt.Println("loopInvites: user.MXID or user.JID is empty")
+					return
+				}
+				portal := user.bridge.GetPortalByJID(database.NewPortalKey(cid, user.JID))
+				if len(portal.MXID) > 0 {
+					_, err := portal.MainIntent().InviteUser(portal.MXID, &mautrix.ReqInviteUser{UserID: user.MXID})
+					if err != nil {
+						fmt.Println(err)
+					} else {
+						fmt.Println("Existing portal room found, invited you to it.")
+					}
+					return
+				}
+				err := portal.CreateMatrixRoom(user)
+				fmt.Println("loopInvites CreateMatrixRoom:", err)
+			}
+		}
+		user.Conn.Store.InvitesContactsLock.Unlock()
 		time.Sleep(39 * time.Second)
 	}
 }
