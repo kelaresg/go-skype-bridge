@@ -1420,8 +1420,8 @@ func (portal *Portal) sendMessage(intent *appservice.IntentAPI, eventType event.
 			"net.maunium.whatsapp.puppet": intent.IsCustomPuppet,
 		}
 	}
-	fmt.Println()
-	fmt.Printf("portal sendMessage0: %+v", content)
+	fmt.Println("portal sendMessage timestamp:", timestamp)
+	fmt.Printf("portal sendMessage: %+v", content)
 	if portal.Encrypted && portal.bridge.Crypto != nil {
 		encrypted, err := portal.bridge.Crypto.Encrypt(portal.MXID, eventType, wrappedContent)
 		if err != nil {
@@ -1431,12 +1431,8 @@ func (portal *Portal) sendMessage(intent *appservice.IntentAPI, eventType event.
 		wrappedContent.Parsed = encrypted
 	}
 	if timestamp == 0 {
-		fmt.Println()
-		fmt.Printf("portal sendMessage1: %+v", content)
 		return intent.SendMessageEvent(portal.MXID, eventType, &wrappedContent)
 	} else {
-		fmt.Println()
-		fmt.Printf("portal sendMessage2: %+v", content)
 		return intent.SendMassagedMessageEvent(portal.MXID, eventType, &wrappedContent, timestamp)
 	}
 }
@@ -2226,30 +2222,34 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 
 func SendMsg(sender *User, chatThreadId string, content *skype.SendMessage, output chan<- error) (err error) {
 	fmt.Println("message SendMsg type: ", content.Type)
-	switch event.MessageType(content.Type) {
-	case event.MsgText, event.MsgEmote, event.MsgNotice:
-		err = sender.Conn.SendText(chatThreadId, content)
-	case event.MsgImage:
-		fmt.Println("message SendMsg type m.image: ", content.Type)
-		err = sender.Conn.SendFile(chatThreadId, content)
-	case event.MsgVideo:
-		fmt.Println("message SendMsg type m.video: ", content.Type)
-		err = sender.Conn.SendFile(chatThreadId, content)
-	case event.MsgAudio:
-		fmt.Println("message SendMsg type m.audio: ", content.Type)
-		err = sender.Conn.SendFile(chatThreadId, content)
-	case event.MsgFile:
-		fmt.Println("message SendMsg type m.file: ", content.Type)
-		err = sender.Conn.SendFile(chatThreadId, content)
-	case event.MsgLocation:
-		fmt.Println("message SendMsg type m.location: ", content.Type)
-		//err = c.SendFile(chatThreadId, content)
-	default:
-		err = errors.New("send to skype(unknown message type)")
+	if sender.Conn.LoginInfo != nil {
+		switch event.MessageType(content.Type) {
+		case event.MsgText, event.MsgEmote, event.MsgNotice:
+			err = sender.Conn.SendText(chatThreadId, content)
+		case event.MsgImage:
+			fmt.Println("message SendMsg type m.image: ", content.Type)
+			err = sender.Conn.SendFile(chatThreadId, content)
+		case event.MsgVideo:
+			fmt.Println("message SendMsg type m.video: ", content.Type)
+			err = sender.Conn.SendFile(chatThreadId, content)
+		case event.MsgAudio:
+			fmt.Println("message SendMsg type m.audio: ", content.Type)
+			err = sender.Conn.SendFile(chatThreadId, content)
+		case event.MsgFile:
+			fmt.Println("message SendMsg type m.file: ", content.Type)
+			err = sender.Conn.SendFile(chatThreadId, content)
+		case event.MsgLocation:
+			fmt.Println("message SendMsg type m.location: ", content.Type)
+			//err = c.SendFile(chatThreadId, content)
+		default:
+			err = errors.New("send to skype(unknown message type)")
+		}
+	} else {
+		err = errors.New("Not logged into Skype or Skype session has expired")
 	}
 
 	if err != nil {
-		output <- fmt.Errorf("message sending responded with %d", err)
+		output <- err
 	} else {
 		output <- nil
 	}
