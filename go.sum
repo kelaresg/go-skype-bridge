@@ -160,6 +160,8 @@ github.com/kelaresg/go-skypeapi v0.1.2-0.20201211120317-8651f9f08575 h1:4M0mtPS+
 github.com/kelaresg/go-skypeapi v0.1.2-0.20201211120317-8651f9f08575/go.mod h1:2Mxwa2Flo+PKlVYEM4QBNgs408C/mUSBXRzAb6+B+Zg=
 github.com/kelaresg/go-skypeapi v0.1.2-0.20210120095455-33c3f50415c4 h1:8tif5ndoTRHAOj4j2Ump9uyDaKoQ/W17dJ2K36G418U=
 github.com/kelaresg/go-skypeapi v0.1.2-0.20210120095455-33c3f50415c4/go.mod h1:2Mxwa2Flo+PKlVYEM4QBNgs408C/mUSBXRzAb6+B+Zg=
+github.com/kelaresg/go-skypeapi v0.1.2-0.20210128115834-086b2e03dd09 h1:Hy1sgotN3qqglcmoT4G295UiX7Ucdyn/mGq/GlwDNgc=
+github.com/kelaresg/go-skypeapi v0.1.2-0.20210128115834-086b2e03dd09/go.mod h1:2Mxwa2Flo+PKlVYEM4QBNgs408C/mUSBXRzAb6+B+Zg=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kkdai/bstream v0.0.0-20161212061736-f391b8402d23/go.mod h1:J+Gs4SYgM6CZQHDETBtE9HaSEkGmuNXF86RwHhHUvq4=
