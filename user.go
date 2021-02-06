@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	//"github.com/pkg/errors"
-	"github.com/skip2/go-qrcode"
 	log "maunium.net/go/maulogger/v2"
 	"maunium.net/go/mautrix"
 
@@ -326,58 +324,6 @@ func (user *User) IsConnected() bool {
 
 func (user *User) IsLoginInProgress() bool {
 	return user.Conn != nil && user.Conn.IsLoginInProgress()
-}
-
-func (user *User) loginQrChannel(ce *CommandEvent, qrChan <-chan string, eventIDChan chan<- id.EventID) {
-	var qrEventID id.EventID
-	for code := range qrChan {
-		if code == "stop" {
-			return
-		}
-		qrCode, err := qrcode.Encode(code, qrcode.Low, 256)
-		if err != nil {
-			user.log.Errorln("Failed to encode QR code:", err)
-			ce.Reply("Failed to encode QR code: %v", err)
-			return
-		}
-
-		bot := user.bridge.AS.BotClient()
-
-		resp, err := bot.UploadBytes(qrCode, "image/png")
-		if err != nil {
-			user.log.Errorln("Failed to upload QR code:", err)
-			ce.Reply("Failed to upload QR code: %v", err)
-			return
-		}
-
-		if qrEventID == "" {
-			sendResp, err := bot.SendImage(ce.RoomID, code, resp.ContentURI)
-			if err != nil {
-				user.log.Errorln("Failed to send QR code to user:", err)
-				return
-			}
-			qrEventID = sendResp.EventID
-			eventIDChan <- qrEventID
-		} else {
-			_, err = bot.SendMessageEvent(ce.RoomID, event.EventMessage, &event.MessageEventContent{
-				MsgType: event.MsgImage,
-				Body:    code,
-				URL:     resp.ContentURI.CUString(),
-				NewContent: &event.MessageEventContent{
-					MsgType: event.MsgImage,
-					Body:    code,
-					URL:     resp.ContentURI.CUString(),
-				},
-				RelatesTo: &event.RelatesTo{
-					Type:    event.RelReplace,
-					EventID: qrEventID,
-				},
-			})
-			if err != nil {
-				user.log.Errorln("Failed to send edited QR code to user:", err)
-			}
-		}
-	}
 }
 
 func (user *User) Login(ce *CommandEvent, name string, password string) (err error) {
