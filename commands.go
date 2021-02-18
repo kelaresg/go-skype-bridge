@@ -297,6 +297,10 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	for _, portal := range allPortals {
 		leave(portal)
 	}
+	ce.User.Conn.Store = &skype.Store{
+		Contacts: make(map[string]skype.Contact),
+		Chats:    make(map[string]skype.Conversation),
+	}
 	ce.Reply("Logged out successfully.")
 }
 
