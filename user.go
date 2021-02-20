@@ -463,23 +463,6 @@ func (user *User) intPostLogin() {
 	}
 }
 
-func (user *User) HandleChatList(chats []skype.Conversation) {
-	user.log.Infoln("Chat list received")
-	chatMap := make(map[string]skype.Conversation)
-	//for _, chat := range user.Conn.Store.Chats {
-	//	chatMap[chat.Jid] = chat
-	//}
-	for _, chat := range chats {
-		cid, _ := chat.Id.(string)
-		chatMap[cid] = chat
-	}
-	select {
-	case user.chatListReceived <- struct{}{}:
-	default:
-	}
-	go user.syncPortals(chatMap, false)
-}
-
 func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll bool) {
 	if chatMap == nil {
 		chatMap = user.Conn.Store.Chats

@@ -251,7 +251,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	if ce.User.Conn == nil {
 		return
 	}
-	_ = ce.User.Conn.GetConversations("", ce.User.bridge.Config.Bridge.InitialChatSync)
+	//_ = ce.User.Conn.GetConversations("", ce.User.bridge.Config.Bridge.InitialChatSync)
 	ce.User.Conn.LoggedIn = false
 	username := ""
 	password := ""
@@ -272,19 +272,19 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	}
 
 	portals := ce.User.GetPortals()
-	newPortals := ce.User.GetPortalsNew()
-	allPortals := newPortals[0:]
-	for _, portal := range portals {
-		var newPortalsHas bool
-		for _, newPortal := range newPortals {
-			if portal.Key == newPortal.Key {
-				newPortalsHas = true
-			}
-		}
-		if !newPortalsHas {
-			allPortals = append(allPortals, portal)
-		}
-	}
+	//newPortals := ce.User.GetPortalsNew()
+	//allPortals := newPortals[0:]
+	//for _, portal := range portals {
+	//	var newPortalsHas bool
+	//	for _, newPortal := range newPortals {
+	//		if portal.Key == newPortal.Key {
+	//			newPortalsHas = true
+	//		}
+	//	}
+	//	if !newPortalsHas {
+	//		allPortals = append(allPortals, portal)
+	//	}
+	//}
 
 	leave := func(portal *Portal) {
 		if len(portal.MXID) > 0 {
@@ -294,7 +294,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 			})
 		}
 	}
-	for _, portal := range allPortals {
+	for _, portal := range portals {
 		leave(portal)
 	}
 	ce.User.Conn.Store = &skype.Store{
