@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/chai2010/webp v1.1.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/kelaresg/go-skypeapi v0.1.2-0.20210128115834-086b2e03dd09
+	github.com/kelaresg/go-skypeapi v0.1.2-0.20210220112556-a87881796d7b
 	github.com/lib/pq v1.7.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
