@@ -479,6 +479,9 @@ func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 		if len(ce.User.Conn.UserProfile.LastName) > 0 {
 			username = username + ce.User.Conn.UserProfile.LastName
 		}
+		if username == "" {
+			username = ce.User.Conn.UserProfile.Username
+		}
 		ce.Reply("You're logged in as @" + username)
 	}
 }
