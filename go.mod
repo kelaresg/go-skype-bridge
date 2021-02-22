@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/chai2010/webp v1.1.0
+	github.com/gabriel-vasile/mimetype v1.1.2
 	github.com/gorilla/websocket v1.4.2
 	github.com/kelaresg/go-skypeapi v0.1.2-0.20210220112556-a87881796d7b
 	github.com/lib/pq v1.7.0

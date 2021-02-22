@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/gabriel-vasile/mimetype"
 	"maunium.net/go/mautrix/patch"
 
 	"encoding/hex"
@@ -1622,8 +1623,7 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 	}
 
 	// synapse doesn't handle webp well, so we convert it. This can be dropped once https://github.com/matrix-org/synapse/issues/4382 is fixed
-	mimeType := http.DetectContentType(data)
-	//length := len(data)
+	mimeType := mimetype.Detect(data).String()
 	if mimeType == "image/webp" {
 		img, err := decodeWebp(bytes.NewReader(data))
 		if err != nil {
