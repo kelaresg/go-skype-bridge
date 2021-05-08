@@ -136,7 +136,11 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 				if portal.Key.JID != match[4] {
 					content.FormattedBody = match[6]
 					content.Body = fmt.Sprintf("%s\n\n", match[6])
-					continue
+
+					// this means that there are forwarding messages across groups
+					if strings.HasSuffix(match[4], skypeExt.GroupSuffix) || strings.HasSuffix(portal.Key.JID, skypeExt.GroupSuffix){
+						continue
+					}
 				}
 				msgMXID := ""
 				msg := formatter.bridge.DB.Message.GetByID(match[5])

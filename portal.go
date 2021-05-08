@@ -1419,7 +1419,7 @@ func (portal *Portal) sendMessage(intent *appservice.IntentAPI, eventType event.
 	wrappedContent := event.Content{Parsed: content}
 	if timestamp != 0 && intent.IsCustomPuppet {
 		wrappedContent.Raw = map[string]interface{}{
-			"net.maunium.whatsapp.puppet": intent.IsCustomPuppet,
+			"net.maunium.skype.puppet": intent.IsCustomPuppet,
 		}
 	}
 	fmt.Println("portal sendMessage timestamp:", timestamp)
@@ -1477,17 +1477,14 @@ func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 			}
 		}
 		// portal.SetReplySkype(content, message)
-
-		fmt.Println()
-		fmt.Printf("portal HandleTextMessage2: %+v", content)
+		fmt.Printf("\nportal HandleTextMessage2: %+v", content)
 		_, _ = intent.UserTyping(portal.MXID, false, 0)
 		resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
 		if err != nil {
 			portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
 			return
 		}
-		fmt.Println()
-		fmt.Printf("portal HandleTextMessage3: %+v", content)
+		fmt.Printf("\nportal HandleTextMessage3: %+v", content)
 		portal.finishHandlingSkype(source, &message, resp.EventID)
 	}
 }
