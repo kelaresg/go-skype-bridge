@@ -1593,6 +1593,11 @@ func (portal *Portal) tryKickUser(userID id.UserID, intent *appservice.IntentAPI
 }
 
 func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *skype.Conn, mediaType string) (data []byte, mediaMessage *skype.MediaMessageContent, err error), mediaType string, thumbnail []byte, info skype.Resource, sendAsSticker bool) {
+	if info.ClientMessageId == "" && info.Content == "" && len(info.SkypeEditedId) > 0 {
+		portal.HandleMessageRevokeSkype(source, info)
+		return
+	}
+
 	intent, endHandlePrivateChatFromMe := portal.startHandlingSkype(source, info)
 	if endHandlePrivateChatFromMe != nil {
 		defer endHandlePrivateChatFromMe()
