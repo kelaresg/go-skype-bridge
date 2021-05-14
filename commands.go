@@ -7,6 +7,7 @@ import (
 	"github.com/kelaresg/matrix-skype/database"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 	"math"
+	"maunium.net/go/mautrix/patch"
 
 	"sort"
 	"strconv"
@@ -482,7 +483,14 @@ func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 		if username == "" {
 			username = ce.User.Conn.UserProfile.Username
 		}
-		ce.Reply("You're logged in as @" + username)
+
+		orgId := ""
+		if patch.ThirdPartyIdEncrypt {
+			orgId = patch.Enc(strings.TrimSuffix(ce.User.JID, skypeExt.NewUserSuffix))
+		} else {
+			orgId = strings.TrimSuffix(ce.User.JID, skypeExt.NewUserSuffix)
+		}
+		ce.Reply("You're logged in as @" + username + ", orgid is " + orgId)
 	}
 }
 

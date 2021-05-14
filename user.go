@@ -6,6 +6,7 @@ import (
 	"fmt"
 	skype "github.com/kelaresg/go-skypeapi"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
+	"maunium.net/go/mautrix/patch"
 	"sort"
 	//"strconv"
 	"strings"
@@ -333,7 +334,13 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	err = user.Conn.Login(name, password)
 	if err != nil {
 		user.log.Errorln("Failed to login:", err)
-		ce.Reply(err.Error())
+		orgId := ""
+		if patch.ThirdPartyIdEncrypt {
+			orgId = patch.Enc(strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix))
+		} else {
+			orgId = strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix)
+		}
+		ce.Reply(err.Error() + ", orgid is " + orgId)
 		return err
 	}
 	username := user.Conn.UserProfile.FirstName
@@ -343,7 +350,14 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	if username == "" {
 		username = user.Conn.UserProfile.Username
 	}
-	ce.Reply("Successfully logged in as @" + username)
+
+	orgId := ""
+	if patch.ThirdPartyIdEncrypt {
+		orgId = patch.Enc(strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix))
+	} else {
+		orgId = strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix)
+	}
+	ce.Reply("Successfully logged in as @" + username + ", orgid is " + orgId)
 
 	user.Conn.Subscribes() // subscribe basic event
 	err = user.Conn.Conn.ContactList(user.Conn.UserProfile.Username)
