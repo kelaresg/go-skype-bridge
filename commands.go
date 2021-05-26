@@ -271,7 +271,6 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		Username: username,
 		Password: password,
 	}
-
 	portals := ce.User.GetPortals()
 	//newPortals := ce.User.GetPortalsNew()
 	//allPortals := newPortals[0:]
@@ -303,6 +302,15 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		Chats:    make(map[string]skype.Conversation),
 	}
 	ce.Reply("Logged out successfully.")
+
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		fmt.Printf("close ReRefresh：%s\n", r)
+	//	}
+	//}()
+	if ce.User.Conn.Refresh != nil {
+		ce.User.Conn.Refresh <- -1
+	}
 }
 
 // CommandLogout handles !logout command

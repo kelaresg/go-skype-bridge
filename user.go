@@ -285,6 +285,7 @@ func (user *User) Connect(evenIfNoSession bool) bool {
 	//_ = user.Conn.SetClientName("matrix-skype bridge", "mx-wa", SkypeVersion)
 	user.log.Debugln("skype connection successful")
 	user.Conn.AddHandler(user)
+
 	return user.RestoreSession()
 }
 
@@ -371,9 +372,10 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 			userIds = append(userIds, userId)
 		}
 		ce.User.Conn.SubscribeUsers(userIds)
-		go loopPresence(ce, user)
+		go loopPresence(user)
 	}
 	go user.Conn.Poll()
+	go user.monitorSession(ce)
 
 	user.ConnectionErrors = 0
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
@@ -384,12 +386,27 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	return
 }
 
-func loopPresence(ce *CommandEvent, user *User) {
-	for {
-		if user.Conn.LoggedIn == false {
+func (user *User) monitorSession(ce *CommandEvent) {
+	user.Conn.Refresh = make(chan int)
+	for x := range user.Conn.Refresh {
+		fmt.Println("monitorSession: ", x)
+		if x > 0 {
+			user.SetSession(user.Conn.LoginInfo)
+		} else {
 			ce.Reply("Session expired")
-			break
+			close(user.Conn.Refresh)
 		}
+	}
+
+	item, ok := <- user.Conn.Refresh
+	if !ok {
+		user.Conn.Refresh = nil
+	}
+	fmt.Println("monitorSession1", item, ok)
+}
+
+func loopPresence(user *User) {
+	for {
 		for cid, contact := range user.contactsPresence {
 			puppet := user.bridge.GetPuppetByJID(cid)
 			_ = puppet.DefaultIntent().SetPresence(event.Presence(strings.ToLower(contact.Availability)))
