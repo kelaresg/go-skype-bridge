@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	skype "github.com/kelaresg/go-skypeapi"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
@@ -461,7 +462,17 @@ func (user *User) tryAutomaticDoublePuppeting() {
 		return
 	}
 	fmt.Println("tryAutomaticDoublePuppeting2", user.MXID)
-	accessToken, err := puppet.loginWithSharedSecret(user.MXID)
+	_,_ = user.UpdateAccessToken(puppet)
+}
+
+func (user *User) UpdateAccessToken(puppet *Puppet) (err error, accessToken string) {
+	if len(user.bridge.Config.Bridge.LoginSharedSecret) == 0 {
+		return errors.New("you didn't set LoginSharedSecret"), ""
+	} else if _, homeserver, _ := user.MXID.Parse(); homeserver != user.bridge.Config.Homeserver.Domain {
+		// user is on another homeserver
+		return errors.New("user is on another homeServer"), ""
+	}
+	accessToken, err = puppet.loginWithSharedSecret(user.MXID)
 	if err != nil {
 		user.log.Warnln("Failed to login with shared secret:", err)
 		return
@@ -472,6 +483,7 @@ func (user *User) tryAutomaticDoublePuppeting() {
 		return
 	}
 	user.log.Infoln("Successfully automatically enabled custom puppet")
+	return
 }
 
 func (user *User) intPostLogin() {

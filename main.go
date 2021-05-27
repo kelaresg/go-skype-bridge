@@ -244,8 +244,8 @@ func (bridge *Bridge) Start() {
 		bridge.Log.Fatalln("Failed to initialize database:", err)
 		os.Exit(15)
 	}
-	bridge.Log.Debugln("Checking connection to homeserver")
-	bridge.ensureConnection()
+	//bridge.Log.Debugln("Checking connection to homeserver")
+	//bridge.ensureConnection()
 	if bridge.Crypto != nil {
 		err := bridge.Crypto.Init()
 		if err != nil {
@@ -377,7 +377,7 @@ func (bridge *Bridge) Main() {
 
 func main() {
 	flag.SetHelpTitles(
-		"matrix-skype - A Matrix-WhatsApp puppeting bridge.",
+		"matrix-skype - A Matrix-Skype puppeting bridge.",
 		"matrix-skype [-h] [-c <path>] [-r <path>] [-g] [--migrate-db <source type> <source uri>]")
 	err := flag.Parse()
 	if err != nil {
