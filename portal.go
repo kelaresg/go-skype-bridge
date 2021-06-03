@@ -176,6 +176,11 @@ func (portal *Portal) handleMessageLoop() {
 				fmt.Printf("portal handleMessageLoop2: %+v", msg)
 				return
 			}
+		} else {
+			if !msg.source.IsInPortal(portal.Key) {
+				fmt.Println("portal handleMessageLoop InPortal:")
+				msg.source.CreateUserPortal(database.PortalKeyWithMeta{PortalKey: portal.Key, InCommunity: false})
+			}
 		}
 		fmt.Println()
 		fmt.Printf("portal handleMessageLoop3: %+v", msg)
@@ -1423,7 +1428,7 @@ func (portal *Portal) sendMessage(intent *appservice.IntentAPI, eventType event.
 		}
 	}
 	fmt.Println("portal sendMessage timestamp:", timestamp)
-	fmt.Printf("portal sendMessage: %+v", content)
+	fmt.Printf("portal sendMessage: %+v\n", content)
 	if portal.Encrypted && portal.bridge.Crypto != nil {
 		encrypted, err := portal.bridge.Crypto.Encrypt(portal.MXID, eventType, wrappedContent)
 		if err != nil {
@@ -1498,6 +1503,15 @@ func (portal *Portal) trySendMessage(intent *appservice.IntentAPI, eventType eve
 				if err != nil {
 					portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
 				}
+			}
+		} else if strings.Index(err.Error(), "M_FORBIDDEN (HTTP 403)") > -1 {
+			puppet := source.bridge.GetPuppetByJID(message.Jid)
+			intentP := puppet.IntentFor(portal)
+			_, err = intentP.InviteUser(portal.MXID, &mautrix.ReqInviteUser{
+				UserID: intent.UserID,
+			})
+			if err == nil {
+				resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp * 1000)
 			}
 		}
 	}
@@ -2233,6 +2247,9 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 	}
 	if err != nil {
 		portal.log.Errorfln("Error handling Matrix event %s: %v", evt.ID, err)
+		if !sender.Conn.LoggedIn {
+			err = errors.New("Skype account has been logged out.")
+		}
 		portal.sendErrorMessage(err)
 	} else {
 		portal.log.Debugfln("Handled Matrix event %s", evt.ID)
@@ -2248,7 +2265,7 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 
 func SendMsg(sender *User, chatThreadId string, content *skype.SendMessage, output chan<- error) (err error) {
 	fmt.Println("message SendMsg type: ", content.Type)
-	if sender.Conn.LoginInfo != nil {
+	if sender.Conn.LoginInfo != nil && sender.Conn.LoggedIn != false {
 		switch event.MessageType(content.Type) {
 		case event.MsgText, event.MsgEmote, event.MsgNotice:
 			err = sender.Conn.SendText(chatThreadId, content)

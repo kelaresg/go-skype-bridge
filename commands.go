@@ -235,7 +235,7 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 		ce.Reply("**Usage:** `login username password`")
 		return
 	}
-
+	leavePortals(ce)
 	if !ce.User.Connect(true) {
 		ce.User.log.Debugln("Connect() returned false, assuming error was logged elsewhere and canceling login.")
 		return
@@ -271,6 +271,19 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		Username: username,
 		Password: password,
 	}
+
+	ce.User.Conn.Store = &skype.Store{
+		Contacts: make(map[string]skype.Contact),
+		Chats:    make(map[string]skype.Conversation),
+	}
+	ce.Reply("Logged out successfully.")
+	leavePortals(ce)
+	if ce.User.Conn.Refresh != nil {
+		ce.User.Conn.Refresh <- -1
+	}
+}
+
+func leavePortals(ce *CommandEvent)  {
 	portals := ce.User.GetPortals()
 	//newPortals := ce.User.GetPortalsNew()
 	//allPortals := newPortals[0:]
@@ -297,56 +310,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	for _, portal := range portals {
 		leave(portal)
 	}
-	ce.User.Conn.Store = &skype.Store{
-		Contacts: make(map[string]skype.Contact),
-		Chats:    make(map[string]skype.Conversation),
-	}
-	ce.Reply("Logged out successfully.")
-
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		fmt.Printf("close ReRefresh：%s\n", r)
-	//	}
-	//}()
-	if ce.User.Conn.Refresh != nil {
-		ce.User.Conn.Refresh <- -1
-	}
 }
-
-// CommandLogout handles !logout command
-//func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
-//	if ce.User.Session == nil {
-//		ce.Reply("You're not logged in.")
-//		return
-//	} else if !ce.User.IsConnected() {
-//		ce.Reply("You are not connected to WhatsApp. Use the `reconnect` command to reconnect, or `delete-session` to forget all login information.")
-//		return
-//	}
-//	puppet := handler.bridge.GetPuppetByJID(ce.User.JID)
-//	if puppet.CustomMXID != "" {
-//		err := puppet.SwitchCustomMXID("", "")
-//		if err != nil {
-//			ce.User.log.Warnln("Failed to logout-matrix while logging out of WhatsApp:", err)
-//		}
-//	}
-//	err := ce.User.Conn.Logout()
-//	if err != nil {
-//		ce.User.log.Warnln("Error while logging out:", err)
-//		ce.Reply("Unknown error while logging out: %v", err)
-//		return
-//	}
-//	_, err = ce.User.Conn.Disconnect()
-//	if err != nil {
-//		ce.User.log.Warnln("Error while disconnecting after logout:", err)
-//	}
-//	ce.User.Conn.RemoveHandlers()
-//	ce.User.Conn = nil
-//	ce.User.removeFromJIDMap()
-//	// TODO this causes a foreign key violation, which should be fixed
-//	//ce.User.JID = ""
-//	ce.User.SetSession(nil)
-//	ce.Reply("Logged out successfully.")
-//}
 
 const cmdDeleteSessionHelp = `delete-session - Delete session information and disconnect from WhatsApp without sending a logout request`
 
