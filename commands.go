@@ -277,9 +277,10 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		Chats:    make(map[string]skype.Conversation),
 	}
 	ce.Reply("Logged out successfully.")
-	leavePortals(ce)
 	if ce.User.Conn.Refresh != nil {
 		ce.User.Conn.Refresh <- -1
+	} else {
+		leavePortals(ce)
 	}
 }
 

@@ -396,6 +396,7 @@ func (user *User) monitorSession(ce *CommandEvent) {
 		} else {
 			ce.Reply("Session expired")
 			close(user.Conn.Refresh)
+			leavePortals(ce)
 		}
 	}
 
