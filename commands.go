@@ -7,6 +7,7 @@ import (
 	"github.com/kelaresg/matrix-skype/database"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 	"math"
+	"maunium.net/go/mautrix/patch"
 
 	"sort"
 	"strconv"
@@ -234,7 +235,7 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 		ce.Reply("**Usage:** `login username password`")
 		return
 	}
-
+	leavePortals(ce)
 	if !ce.User.Connect(true) {
 		ce.User.log.Debugln("Connect() returned false, assuming error was logged elsewhere and canceling login.")
 		return
@@ -251,7 +252,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	if ce.User.Conn == nil {
 		return
 	}
-	_ = ce.User.Conn.GetConversations("", ce.User.bridge.Config.Bridge.InitialChatSync)
+	//_ = ce.User.Conn.GetConversations("", ce.User.bridge.Config.Bridge.InitialChatSync)
 	ce.User.Conn.LoggedIn = false
 	username := ""
 	password := ""
@@ -271,20 +272,33 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		Password: password,
 	}
 
-	portals := ce.User.GetPortals()
-	newPortals := ce.User.GetPortalsNew()
-	allPortals := newPortals[0:]
-	for _, portal := range portals {
-		var newPortalsHas bool
-		for _, newPortal := range newPortals {
-			if portal.Key == newPortal.Key {
-				newPortalsHas = true
-			}
-		}
-		if !newPortalsHas {
-			allPortals = append(allPortals, portal)
-		}
+	ce.User.Conn.Store = &skype.Store{
+		Contacts: make(map[string]skype.Contact),
+		Chats:    make(map[string]skype.Conversation),
 	}
+	ce.Reply("Logged out successfully.")
+	if ce.User.Conn.Refresh != nil {
+		ce.User.Conn.Refresh <- -1
+	} else {
+		leavePortals(ce)
+	}
+}
+
+func leavePortals(ce *CommandEvent)  {
+	portals := ce.User.GetPortals()
+	//newPortals := ce.User.GetPortalsNew()
+	//allPortals := newPortals[0:]
+	//for _, portal := range portals {
+	//	var newPortalsHas bool
+	//	for _, newPortal := range newPortals {
+	//		if portal.Key == newPortal.Key {
+	//			newPortalsHas = true
+	//		}
+	//	}
+	//	if !newPortalsHas {
+	//		allPortals = append(allPortals, portal)
+	//	}
+	//}
 
 	leave := func(portal *Portal) {
 		if len(portal.MXID) > 0 {
@@ -294,46 +308,10 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 			})
 		}
 	}
-	for _, portal := range allPortals {
+	for _, portal := range portals {
 		leave(portal)
 	}
-	ce.Reply("Logged out successfully.")
 }
-
-// CommandLogout handles !logout command
-//func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
-//	if ce.User.Session == nil {
-//		ce.Reply("You're not logged in.")
-//		return
-//	} else if !ce.User.IsConnected() {
-//		ce.Reply("You are not connected to WhatsApp. Use the `reconnect` command to reconnect, or `delete-session` to forget all login information.")
-//		return
-//	}
-//	puppet := handler.bridge.GetPuppetByJID(ce.User.JID)
-//	if puppet.CustomMXID != "" {
-//		err := puppet.SwitchCustomMXID("", "")
-//		if err != nil {
-//			ce.User.log.Warnln("Failed to logout-matrix while logging out of WhatsApp:", err)
-//		}
-//	}
-//	err := ce.User.Conn.Logout()
-//	if err != nil {
-//		ce.User.log.Warnln("Error while logging out:", err)
-//		ce.Reply("Unknown error while logging out: %v", err)
-//		return
-//	}
-//	_, err = ce.User.Conn.Disconnect()
-//	if err != nil {
-//		ce.User.log.Warnln("Error while disconnecting after logout:", err)
-//	}
-//	ce.User.Conn.RemoveHandlers()
-//	ce.User.Conn = nil
-//	ce.User.removeFromJIDMap()
-//	// TODO this causes a foreign key violation, which should be fixed
-//	//ce.User.JID = ""
-//	ce.User.SetSession(nil)
-//	ce.Reply("Logged out successfully.")
-//}
 
 const cmdDeleteSessionHelp = `delete-session - Delete session information and disconnect from WhatsApp without sending a logout request`
 
@@ -475,7 +453,17 @@ func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 		if len(ce.User.Conn.UserProfile.LastName) > 0 {
 			username = username + ce.User.Conn.UserProfile.LastName
 		}
-		ce.Reply("You're logged in as @" + username)
+		if username == "" {
+			username = ce.User.Conn.UserProfile.Username
+		}
+
+		orgId := ""
+		if patch.ThirdPartyIdEncrypt {
+			orgId = patch.Enc(strings.TrimSuffix(ce.User.JID, skypeExt.NewUserSuffix))
+		} else {
+			orgId = strings.TrimSuffix(ce.User.JID, skypeExt.NewUserSuffix)
+		}
+		ce.Reply("You're logged in as @" + username + ", orgid is " + orgId)
 	}
 }
 

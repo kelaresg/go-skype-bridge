@@ -183,6 +183,17 @@ func (user *User) SetPortalKeys(newKeys []PortalKeyWithMeta) error {
 	return tx.Commit()
 }
 
+func (user *User) CreateUserPortal(newKey PortalKeyWithMeta) {
+	user.log.Debugfln("Creating new portal %s for %s", newKey.PortalKey.JID, newKey.PortalKey.Receiver)
+	_, err := user.db.Exec(`INSERT INTO user_portal (user_jid, portal_jid, portal_receiver, in_community) VALUES ($1, $2, $3, $4)`,
+		user.jidPtr(),
+		newKey.PortalKey.JID, newKey.PortalKey.Receiver,
+		newKey.InCommunity)
+	if err != nil {
+		user.log.Warnfln("Failed to insert %s: %v", user.MXID, err)
+	}
+}
+
 func (user *User) IsInPortal(key PortalKey) bool {
 	row := user.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM user_portal WHERE user_jid=$1 AND portal_jid=$2 AND portal_receiver=$3)`, user.jidPtr(), &key.JID, &key.Receiver)
 	var exists bool

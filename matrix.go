@@ -366,7 +366,7 @@ func (mx *MatrixHandler) shouldIgnoreEvent(evt *event.Event) bool {
 		fmt.Println()
 		return true
 	}
-	isCustomPuppet, ok := evt.Content.Raw["net.maunium.whatsapp.puppet"].(bool)
+	isCustomPuppet, ok := evt.Content.Raw["net.maunium.skype.puppet"].(bool)
 	if ok && isCustomPuppet && mx.bridge.GetPuppetByCustomMXID(evt.Sender) != nil {
 		return true
 	}

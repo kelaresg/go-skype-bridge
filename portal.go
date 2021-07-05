@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/gabriel-vasile/mimetype"
 	"maunium.net/go/mautrix/patch"
 
 	"encoding/hex"
@@ -174,6 +175,11 @@ func (portal *Portal) handleMessageLoop() {
 				fmt.Println()
 				fmt.Printf("portal handleMessageLoop2: %+v", msg)
 				return
+			}
+		} else {
+			if !msg.source.IsInPortal(portal.Key) {
+				fmt.Println("portal handleMessageLoop InPortal:")
+				msg.source.CreateUserPortal(database.PortalKeyWithMeta{PortalKey: portal.Key, InCommunity: false})
 			}
 		}
 		fmt.Println()
@@ -1237,7 +1243,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 			_ = customPuppet.CustomIntent().EnsureJoined(portal.MXID)
 		}
 	}
-	user.addPortalToCommunity(portal)
+	inCommunity := user.addPortalToCommunity(portal)
 	if portal.IsPrivateChat() {
 		puppet := user.bridge.GetPuppetByJID(portal.Key.JID)
 		user.addPuppetToCommunity(puppet)
@@ -1249,6 +1255,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 			}
 		}
 	}
+	user.CreateUserPortal(database.PortalKeyWithMeta{PortalKey: portal.Key, InCommunity: inCommunity})
 	err = portal.FillInitialHistory(user)
 	if err != nil {
 		portal.log.Errorln("Failed to fill history:", err)
@@ -1417,11 +1424,11 @@ func (portal *Portal) sendMessage(intent *appservice.IntentAPI, eventType event.
 	wrappedContent := event.Content{Parsed: content}
 	if timestamp != 0 && intent.IsCustomPuppet {
 		wrappedContent.Raw = map[string]interface{}{
-			"net.maunium.whatsapp.puppet": intent.IsCustomPuppet,
+			"net.maunium.skype.puppet": intent.IsCustomPuppet,
 		}
 	}
 	fmt.Println("portal sendMessage timestamp:", timestamp)
-	fmt.Printf("portal sendMessage: %+v", content)
+	fmt.Printf("portal sendMessage: %+v\n", content)
 	if portal.Encrypted && portal.bridge.Crypto != nil {
 		encrypted, err := portal.bridge.Crypto.Encrypt(portal.MXID, eventType, wrappedContent)
 		if err != nil {
@@ -1474,20 +1481,41 @@ func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 				}
 			}
 		}
-		// portal.SetReplySkype(content, message)
-
-		fmt.Println()
-		fmt.Printf("portal HandleTextMessage2: %+v", content)
+		fmt.Printf("\nportal HandleTextMessage2: %+v", content)
 		_, _ = intent.UserTyping(portal.MXID, false, 0)
-		resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
-		if err != nil {
-			portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
-			return
+		resp, err := portal.trySendMessage(intent, event.EventMessage, content, source, message)
+		if err == nil {
+			portal.finishHandlingSkype(source, &message, resp.EventID)
 		}
-		fmt.Println()
-		fmt.Printf("portal HandleTextMessage3: %+v", content)
-		portal.finishHandlingSkype(source, &message, resp.EventID)
 	}
+}
+
+func (portal *Portal) trySendMessage(intent *appservice.IntentAPI, eventType event.Type, content interface{}, source *User, message skype.Resource) (resp *mautrix.RespSendEvent, err error) {
+	resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp * 1000)
+	if err != nil {
+		portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
+		if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
+			puppet := source.bridge.GetPuppetByJID(source.JID)
+			err, accessToken := source.UpdateAccessToken(puppet)
+			if err == nil && accessToken != "" {
+				intent.AccessToken = accessToken
+				resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp * 1000)
+				if err != nil {
+					portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
+				}
+			}
+		} else if strings.Index(err.Error(), "M_FORBIDDEN (HTTP 403)") > -1 {
+			puppet := source.bridge.GetPuppetByJID(message.Jid)
+			intentP := puppet.IntentFor(portal)
+			_, err = intentP.InviteUser(portal.MXID, &mautrix.ReqInviteUser{
+				UserID: intent.UserID,
+			})
+			if err == nil {
+				resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp * 1000)
+			}
+		}
+	}
+	return
 }
 
 func (portal *Portal) HandleLocationMessageSkype(source *User, message skype.Resource) {
@@ -1518,12 +1546,17 @@ func (portal *Portal) HandleLocationMessageSkype(source *User, message skype.Res
 	// portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
-	resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
-	if err != nil {
-		portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
-		return
+
+	resp, err := portal.trySendMessage(intent, event.EventMessage, content, source, message)
+	if err == nil {
+		portal.finishHandlingSkype(source, &message, resp.EventID)
 	}
-	portal.finishHandlingSkype(source, &message, resp.EventID)
+	//resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
+	//if err != nil {
+	//	portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
+	//	return
+	//}
+	//portal.finishHandlingSkype(source, &message, resp.EventID)
 }
 
 func (portal *Portal) HandleContactMessageSkype(source *User, message skype.Resource) {
@@ -1548,24 +1581,28 @@ func (portal *Portal) HandleContactMessageSkype(source *User, message skype.Reso
 	// portal.SetReplySkype(content, message)
 
 	_, _ = intent.UserTyping(portal.MXID, false, 0)
-	resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
-	if err != nil {
-		portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
-		return
+	resp, err := portal.trySendMessage(intent, event.EventMessage, content, source, message)
+	if err == nil {
+		portal.finishHandlingSkype(source, &message, resp.EventID)
 	}
-	portal.finishHandlingSkype(source, &message, resp.EventID)
+	//resp, err := portal.sendMessage(intent, event.EventMessage, content, message.Timestamp * 1000)
+	//if err != nil {
+	//	portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
+	//	return
+	//}
+	//portal.finishHandlingSkype(source, &message, resp.EventID)
 }
 
 func (portal *Portal) sendMediaBridgeFailureSkype(source *User, intent *appservice.IntentAPI, info skype.Resource, downloadErr error) {
 	portal.log.Errorfln("Failed to download media for %s: %v", info.Id, downloadErr)
-	resp, err := portal.sendMessage(intent, event.EventMessage, &event.MessageEventContent{
+	resp, err := portal.trySendMessage(intent, event.EventMessage, &event.MessageEventContent{
 		MsgType: event.MsgNotice,
 		Body:    "Failed to bridge media",
-	}, int64(info.Timestamp*1000))
-	if err != nil {
-		portal.log.Errorfln("Failed to send media download error message for %s: %v", info.Id, err)
-	} else {
+	}, source, info)
+	if err == nil {
 		portal.finishHandlingSkype(source, &info, resp.EventID)
+	} else {
+		portal.log.Errorfln("Failed to send media download error message for %s: %v", info.Id, err)
 	}
 }
 
@@ -1594,6 +1631,11 @@ func (portal *Portal) tryKickUser(userID id.UserID, intent *appservice.IntentAPI
 }
 
 func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *skype.Conn, mediaType string) (data []byte, mediaMessage *skype.MediaMessageContent, err error), mediaType string, thumbnail []byte, info skype.Resource, sendAsSticker bool) {
+	if info.ClientMessageId == "" && info.Content == "" && len(info.SkypeEditedId) > 0 {
+		portal.HandleMessageRevokeSkype(source, info)
+		return
+	}
+
 	intent, endHandlePrivateChatFromMe := portal.startHandlingSkype(source, info)
 	if endHandlePrivateChatFromMe != nil {
 		defer endHandlePrivateChatFromMe()
@@ -1621,8 +1663,7 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 	}
 
 	// synapse doesn't handle webp well, so we convert it. This can be dropped once https://github.com/matrix-org/synapse/issues/4382 is fixed
-	mimeType := http.DetectContentType(data)
-	//length := len(data)
+	mimeType := mimetype.Detect(data).String()
 	if mimeType == "image/webp" {
 		img, err := decodeWebp(bytes.NewReader(data))
 		if err != nil {
@@ -1744,10 +1785,10 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 	if sendAsSticker {
 		eventType = event.EventSticker
 	}
-	resp, err := portal.sendMessage(intent, eventType, content, info.Timestamp * 1000)
-	if err != nil {
-		portal.log.Errorfln("Failed to handle message %s: %v", info.Id, err)
-		return
+
+	resp, err := portal.trySendMessage(intent, eventType, content, source, info)
+	if err == nil {
+		portal.finishHandlingSkype(source, &info, resp.EventID)
 	}
 
 	//if len(caption) > 0 {
@@ -1764,7 +1805,6 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 	//	}
 	//	// TODO store caption mxid?
 	//}
-	portal.finishHandlingSkype(source, &info, resp.EventID)
 }
 
 func makeMessageID() *string {
@@ -2207,6 +2247,9 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 	}
 	if err != nil {
 		portal.log.Errorfln("Error handling Matrix event %s: %v", evt.ID, err)
+		if !sender.Conn.LoggedIn {
+			err = errors.New("Skype account has been logged out.")
+		}
 		portal.sendErrorMessage(err)
 	} else {
 		portal.log.Debugfln("Handled Matrix event %s", evt.ID)
@@ -2222,7 +2265,7 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 
 func SendMsg(sender *User, chatThreadId string, content *skype.SendMessage, output chan<- error) (err error) {
 	fmt.Println("message SendMsg type: ", content.Type)
-	if sender.Conn.LoginInfo != nil {
+	if sender.Conn.LoginInfo != nil && sender.Conn.LoggedIn != false {
 		switch event.MessageType(content.Type) {
 		case event.MsgText, event.MsgEmote, event.MsgNotice:
 			err = sender.Conn.SendText(chatThreadId, content)

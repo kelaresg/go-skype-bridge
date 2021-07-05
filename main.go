@@ -258,8 +258,8 @@ func (bridge *Bridge) Start() {
 		bridge.Provisioning.Init()
 	}
 	bridge.LoadRelaybot()
-	bridge.Log.Debugln("Checking connection to homeserver")
-	bridge.ensureConnection()
+	//bridge.Log.Debugln("Checking connection to homeserver")
+	//bridge.ensureConnection()
 	bridge.Log.Debugln("Starting application service HTTP server")
 	go bridge.AS.Start()
 	bridge.Log.Debugln("Starting event processor")
@@ -377,7 +377,7 @@ func (bridge *Bridge) Main() {
 
 func main() {
 	flag.SetHelpTitles(
-		"matrix-skype - A Matrix-WhatsApp puppeting bridge.",
+		"matrix-skype - A Matrix-Skype puppeting bridge.",
 		"matrix-skype [-h] [-c <path>] [-r <path>] [-g] [--migrate-db <source type> <source uri>]")
 	err := flag.Parse()
 	if err != nil {

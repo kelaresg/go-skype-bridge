@@ -122,7 +122,7 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 
 		// parse quote message(set reply)
 		content.Body = strings.ReplaceAll(content.Body, "\n", "")
-		quoteReg := regexp.MustCompile(`<quote[^>]+\bauthor="([^"]+)" authorname="([^"]+)" timestamp="([^"]+)" conversation.* messageid="([^"]+)".*>.*?</legacyquote>(.*?)<legacyquote>.*?</legacyquote></quote>(.*)`)
+		quoteReg := regexp.MustCompile(`<quote[^>]+\bauthor="([^"]+)" authorname="([^"]+)" timestamp="([^"]+)" conversation="([^"]+)" messageid="([^"]+)".*>.*?</legacyquote>(.*?)<legacyquote>.*?</legacyquote></quote>(.*)`)
 		quoteMatches := quoteReg.FindAllStringSubmatch(content.Body, -1)
 
 		if len(quoteMatches) > 0 {
@@ -132,8 +132,18 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 					fmt.Println("ParseSkype quoteMatches a:", a)
 					fmt.Println()
 				}
+				portal := formatter.bridge.GetPortalByMXID(RoomMXID)
+				if portal.Key.JID != match[4] {
+					content.FormattedBody = match[6]
+					content.Body = fmt.Sprintf("%s\n\n", match[6])
+
+					// this means that there are forwarding messages across groups
+					if strings.HasSuffix(match[4], skypeExt.GroupSuffix) || strings.HasSuffix(portal.Key.JID, skypeExt.GroupSuffix){
+						continue
+					}
+				}
 				msgMXID := ""
-				msg := formatter.bridge.DB.Message.GetByID(match[4])
+				msg := formatter.bridge.DB.Message.GetByID(match[5])
 				if msg != nil {
 					msgMXID = string(msg.MXID)
 				}
@@ -144,21 +154,21 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 					href1,
 					href2,
 					mxid,
-					match[5])
+					match[6])
 				content.FormattedBody = newContent
-				content.Body = fmt.Sprintf("> <%s> %s\n\n", mxid, match[5])
+				content.Body = fmt.Sprintf("> <%s> %s\n\n", mxid, match[6])
 				inRelateTo := &event.RelatesTo{
 					Type: event.RelReply,
 					EventID: id.EventID(msgMXID),
 				}
 				content.SetRelatesTo(inRelateTo)
-				backStr = match[6]
+				backStr = match[7]
 			}
 		}
 	}
 
 	// parse mention user message
-	r := regexp.MustCompile(`(?m)<at[^>]+\bid="([^"]+)"(.*?)</at>`)
+	r := regexp.MustCompile(`(?m)<at[^>]+\bid="([^"]+)">(.*?)</at>`)
 	var originStr string
 	var originBodyStr string
 	if len(backStr) == 0 {
@@ -170,8 +180,14 @@ func (formatter *Formatter) ParseSkype(content *event.MessageEventContent, RoomM
 	if len(matches) > 0 {
 		for _, match := range matches {
 			mxid, displayname := formatter.getMatrixInfoByJID(match[1] + skypeExt.NewUserSuffix)
+			replaceStr := ""
+			if len(displayname) < 1 {
+				// TODO need to optimize
+				replaceStr = match[2] + ":"
+			} else {
+				replaceStr = fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.ServerName, mxid, displayname)
+			}
 			// number := "@" + strings.Replace(match[1], skypeExt.NewUserSuffix, "", 1)
-			replaceStr := fmt.Sprintf(`<a href="https://%s/#/%s">%s</a>:`, formatter.bridge.Config.Homeserver.ServerName, mxid, displayname)
 			originStr = strings.ReplaceAll(originStr, match[0], replaceStr)
 			originBodyStr = strings.ReplaceAll(originStr, replaceStr, displayname + ":")
 		}

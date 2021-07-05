@@ -122,20 +122,20 @@ func (helper *CryptoHelper) loginBot() (*mautrix.Client, error) {
 		return nil, fmt.Errorf("failed to initialize client: %w", err)
 	}
 	client.Logger = helper.baseLog.Sub("Bot")
+	client.Client = helper.bridge.AS.HTTPClient
+	client.DefaultHTTPRetries = helper.bridge.AS.DefaultHTTPRetries
 	flows, err := client.GetLoginFlows()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get supported login flows: %w", err)
 	}
-	if !flows.HasFlow(mautrix.AuthTypeAppservice) {
-		// TODO after synapse 1.22, turn this into an error
-		helper.log.Warnln("Encryption enabled in config, but homeserver does not advertise appservice login")
-		//return nil, fmt.Errorf("homeserver does not support appservice login")
+	if !flows.HasFlow(mautrix.AuthTypeHalfyAppservice) {
+		return nil, fmt.Errorf("homeserver does not support appservice login")
 	}
 	// We set the API token to the AS token here to authenticate the appservice login
 	// It'll get overridden after the login
 	client.AccessToken = helper.bridge.AS.Registration.AppToken
 	resp, err := client.Login(&mautrix.ReqLogin{
-		Type:                     mautrix.AuthTypeAppservice,
+		Type:                     mautrix.AuthTypeHalfyAppservice,
 		Identifier:               mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: string(helper.bridge.AS.BotMXID())},
 		DeviceID:                 deviceID,
 		InitialDeviceDisplayName: "Skype Bridge",

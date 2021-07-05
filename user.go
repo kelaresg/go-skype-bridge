@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	skype "github.com/kelaresg/go-skypeapi"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
+	"maunium.net/go/mautrix/patch"
 	"sort"
 	//"strconv"
 	"strings"
@@ -284,6 +286,7 @@ func (user *User) Connect(evenIfNoSession bool) bool {
 	//_ = user.Conn.SetClientName("matrix-skype bridge", "mx-wa", SkypeVersion)
 	user.log.Debugln("skype connection successful")
 	user.Conn.AddHandler(user)
+
 	return user.RestoreSession()
 }
 
@@ -333,7 +336,13 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	err = user.Conn.Login(name, password)
 	if err != nil {
 		user.log.Errorln("Failed to login:", err)
-		ce.Reply(err.Error())
+		orgId := ""
+		if patch.ThirdPartyIdEncrypt {
+			orgId = patch.Enc(strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix))
+		} else {
+			orgId = strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix)
+		}
+		ce.Reply(err.Error() + ", orgid is " + orgId)
 		return err
 	}
 	username := user.Conn.UserProfile.FirstName
@@ -343,7 +352,14 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	if username == "" {
 		username = user.Conn.UserProfile.Username
 	}
-	ce.Reply("Successfully logged in as @" + username)
+
+	orgId := ""
+	if patch.ThirdPartyIdEncrypt {
+		orgId = patch.Enc(strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix))
+	} else {
+		orgId = strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix)
+	}
+	ce.Reply("Successfully logged in as @" + username + ", orgid is " + orgId)
 
 	user.Conn.Subscribes() // subscribe basic event
 	err = user.Conn.Conn.ContactList(user.Conn.UserProfile.Username)
@@ -357,9 +373,10 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 			userIds = append(userIds, userId)
 		}
 		ce.User.Conn.SubscribeUsers(userIds)
-		go loopPresence(ce, user)
+		go loopPresence(user)
 	}
 	go user.Conn.Poll()
+	go user.monitorSession(ce)
 
 	user.ConnectionErrors = 0
 	user.JID = "8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix
@@ -370,12 +387,28 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	return
 }
 
-func loopPresence(ce *CommandEvent, user *User) {
-	for {
-		if user.Conn.LoggedIn == false {
+func (user *User) monitorSession(ce *CommandEvent) {
+	user.Conn.Refresh = make(chan int)
+	for x := range user.Conn.Refresh {
+		fmt.Println("monitorSession: ", x)
+		if x > 0 {
+			user.SetSession(user.Conn.LoginInfo)
+		} else {
 			ce.Reply("Session expired")
-			break
+			close(user.Conn.Refresh)
+			leavePortals(ce)
 		}
+	}
+
+	item, ok := <- user.Conn.Refresh
+	if !ok {
+		user.Conn.Refresh = nil
+	}
+	fmt.Println("monitorSession1", item, ok)
+}
+
+func loopPresence(user *User) {
+	for {
 		for cid, contact := range user.contactsPresence {
 			puppet := user.bridge.GetPuppetByJID(cid)
 			_ = puppet.DefaultIntent().SetPresence(event.Presence(strings.ToLower(contact.Availability)))
@@ -430,7 +463,17 @@ func (user *User) tryAutomaticDoublePuppeting() {
 		return
 	}
 	fmt.Println("tryAutomaticDoublePuppeting2", user.MXID)
-	accessToken, err := puppet.loginWithSharedSecret(user.MXID)
+	_,_ = user.UpdateAccessToken(puppet)
+}
+
+func (user *User) UpdateAccessToken(puppet *Puppet) (err error, accessToken string) {
+	if len(user.bridge.Config.Bridge.LoginSharedSecret) == 0 {
+		return errors.New("you didn't set LoginSharedSecret"), ""
+	} else if _, homeserver, _ := user.MXID.Parse(); homeserver != user.bridge.Config.Homeserver.Domain {
+		// user is on another homeserver
+		return errors.New("user is on another homeServer"), ""
+	}
+	accessToken, err = puppet.loginWithSharedSecret(user.MXID)
 	if err != nil {
 		user.log.Warnln("Failed to login with shared secret:", err)
 		return
@@ -441,6 +484,7 @@ func (user *User) tryAutomaticDoublePuppeting() {
 		return
 	}
 	user.log.Infoln("Successfully automatically enabled custom puppet")
+	return
 }
 
 func (user *User) intPostLogin() {
@@ -461,23 +505,6 @@ func (user *User) intPostLogin() {
 	case <-time.After(time.Duration(user.bridge.Config.Bridge.PortalSyncWait) * time.Second):
 		user.log.Warnln("Timed out waiting for chat list to arrive! Unlocking processing of incoming messages.")
 	}
-}
-
-func (user *User) HandleChatList(chats []skype.Conversation) {
-	user.log.Infoln("Chat list received")
-	chatMap := make(map[string]skype.Conversation)
-	//for _, chat := range user.Conn.Store.Chats {
-	//	chatMap[chat.Jid] = chat
-	//}
-	for _, chat := range chats {
-		cid, _ := chat.Id.(string)
-		chatMap[cid] = chat
-	}
-	select {
-	case user.chatListReceived <- struct{}{}:
-	default:
-	}
-	go user.syncPortals(chatMap, false)
 }
 
 func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll bool) {
