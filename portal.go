@@ -288,7 +288,7 @@ func (portal *Portal) markHandledSkype(source *User, message *skype.Resource, mx
 	if message.GetFromMe(source.Conn.Conn) {
 		msg.Sender = source.JID
 	} else if portal.IsPrivateChat() {
-		msg.Sender = portal.Key.JID
+		msg.Sender = source.JID
 	} else {
 		msg.Sender = source.JID
 		//if len(msg.Sender) == 0 {
