@@ -55,7 +55,7 @@ appservice:
 bridge:
     # Localpart template of MXIDs for Skype users.
     # {{.}} is replaced with the phone number of the Skype user.
-    username_template: skype&{{.}}
+    username_template: skype-{{.}}
     # Displayname template for Skype users.
     # {{.Notify}} - nickname set by the Skype user
     # {{.Jid}}    - phone number (international format)
@@ -71,7 +71,7 @@ bridge:
     # (Note that, by default, non-admins might not have your homeserver's permission to create
     #  communities.)
     # {{.Localpart}} is the MXID localpart and {{.Server}} is the MXID server part of the user.
-    community_template: skype&{{.Localpart}}={{.Server}}
+    community_template: skype-{{.Localpart}}={{.Server}}
 
     # Skype connection timeout in seconds.
     connection_timeout: 20
@@ -176,7 +176,7 @@ bridge:
             # 8 characters
             key: '12dsf323'
             # Use the username_template prefix. (Warning: At present, username_template cannot be too complicated, otherwise this function may cause unknown errors)
-            username_template_prefix: 'skype&'
+            username_template_prefix: 'skype-'
 
     # Permissions for using the bridge.
     # Permitted values:
