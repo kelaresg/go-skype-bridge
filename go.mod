@@ -6,7 +6,7 @@ require (
 	github.com/chai2010/webp v1.1.0
 	github.com/gabriel-vasile/mimetype v1.1.2
 	github.com/gorilla/websocket v1.4.2
-	github.com/kelaresg/go-skypeapi v0.1.2-0.20210603114428-9c103d451110
+	github.com/kelaresg/go-skypeapi v0.1.2-0.20210813144457-5bc29092a74e
 	github.com/lib/pq v1.9.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
