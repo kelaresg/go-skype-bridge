@@ -102,7 +102,10 @@ func (puppet *Puppet) StartCustomMXID() error {
 	resp, err := intent.Whoami()
 	if err != nil {
 		if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
-			err, _ = puppet.customUser.UpdateAccessToken(puppet)
+			puppet.log.Debugln("StartCustomMXID UpdateAccessToken: ", puppet.MXID)
+			if puppet.customUser != nil {
+				err, _ = puppet.customUser.UpdateAccessToken(puppet)
+			}
 		}
 		if err != nil {
 			puppet.clearCustomMXID()
