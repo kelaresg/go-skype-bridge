@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -100,8 +101,13 @@ func (puppet *Puppet) StartCustomMXID() error {
 	}
 	resp, err := intent.Whoami()
 	if err != nil {
-		puppet.clearCustomMXID()
-		return err
+		if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
+			err, _ = puppet.customUser.UpdateAccessToken(puppet)
+		}
+		if err != nil {
+			puppet.clearCustomMXID()
+			return err
+		}
 	}
 	if resp.UserID != puppet.CustomMXID {
 		puppet.clearCustomMXID()
