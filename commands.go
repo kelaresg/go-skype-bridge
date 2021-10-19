@@ -250,6 +250,7 @@ const cmdLogoutHelp = `logout - Logout from Skype`
 
 func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	if ce.User.Conn == nil {
+		ce.Reply("You're not logged into Skype.")
 		return
 	}
 	//_ = ce.User.Conn.GetConversations("", ce.User.bridge.Config.Bridge.InitialChatSync)
