@@ -1,19 +1,17 @@
-FROM golang:1-alpine AS builder
+FROM golang:1-alpine3.14 AS builder
 
-RUN echo "@edge_community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
-RUN apk add --no-cache git ca-certificates build-base su-exec olm-dev@edge_community
+RUN apk add --no-cache git ca-certificates build-base su-exec olm-dev
 
 COPY . /build
 WORKDIR /build
 RUN go build -o /usr/bin/matrix-skype
 
-FROM alpine:latest
+FROM alpine:3.14
 
 ENV UID=1337 \
     GID=1337
 
-RUN echo "@edge_community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
-RUN apk add --no-cache su-exec ca-certificates olm@edge_community
+RUN apk add --no-cache ffmpeg su-exec ca-certificates olm bash jq yq curl
 
 COPY --from=builder /usr/bin/matrix-skype /usr/bin/matrix-skype
 COPY --from=builder /build/example-config.yaml /opt/matrix-skype/example-config.yaml
