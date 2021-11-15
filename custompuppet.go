@@ -101,11 +101,14 @@ func (puppet *Puppet) StartCustomMXID() error {
 	}
 	resp, err := intent.Whoami()
 	if err != nil {
-		if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
-			puppet.log.Debugln("StartCustomMXID UpdateAccessToken: ", puppet.MXID)
-			if puppet.customUser != nil {
-				err, _ = puppet.customUser.UpdateAccessToken(puppet)
-			}
+		// if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
+		// 	puppet.log.Debugln("StartCustomMXID UpdateAccessToken: ", puppet.MXID)
+		// 	if puppet.customUser != nil {
+		// 		err, _ = puppet.customUser.UpdateAccessToken(puppet)
+		// 	}
+		// }
+		if puppet.customUser != nil {
+			err, _ = puppet.updateCustomAccessTokenIfExpired(err, puppet.customUser)
 		}
 		if err != nil {
 			puppet.clearCustomMXID()
@@ -121,6 +124,17 @@ func (puppet *Puppet) StartCustomMXID() error {
 	puppet.customUser = puppet.bridge.GetUserByMXID(puppet.CustomMXID)
 	puppet.startSyncing()
 	return nil
+}
+
+func (puppet *Puppet) updateCustomAccessTokenIfExpired(err error, user *User) (newErr error, accessToken string) {
+	if user == nil {
+		return err, ""
+	}
+	puppet.log.Debugln("StartCustomMXID UpdateAccessToken: ", puppet.MXID)
+	if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
+		return user.UpdateAccessToken(puppet)
+	}
+	return err, ""
 }
 
 func (puppet *Puppet) startSyncing() {
@@ -146,7 +160,7 @@ func (puppet *Puppet) stopSyncing() {
 
 func (puppet *Puppet) ProcessResponse(resp *mautrix.RespSync, since string) error {
 	if !puppet.customUser.IsConnected() {
-		puppet.log.Debugln("Skipping sync processing: custom user not connected to whatsapp")
+		puppet.log.Debugln("Skipping sync processing: custom user not connected to skype")
 		return nil
 	}
 	for roomID, events := range resp.Rooms.Join {
@@ -237,7 +251,8 @@ func (puppet *Puppet) handleTypingEvent(portal *Portal, evt *event.Event) {
 
 func (puppet *Puppet) OnFailedSync(res *mautrix.RespSync, err error) (time.Duration, error) {
 	puppet.log.Warnln("Sync error:", err)
-	return 10 * time.Second, nil
+	err, _ = puppet.updateCustomAccessTokenIfExpired(err, puppet.customUser)
+	return 10 * time.Second, err
 }
 
 func (puppet *Puppet) GetFilterJSON(_ id.UserID) *mautrix.Filter {
