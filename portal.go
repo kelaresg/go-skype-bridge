@@ -2067,15 +2067,15 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			// mention user message
 			r := regexp.MustCompile(`(?m)<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.ServerName + `/#/@([^"]+):(.*?)">(.*?)</a>`)
 			matches := r.FindAllStringSubmatch(matchStr, -1)
-			fmt.Println("matches: ", matches)
+			portal.log.Debugln("matches: ", matches)
 			if len(matches) > 0 {
 				for _, match := range matches {
 					if len(match) > 2 {
 						skyId := patch.ParseLocalPart(html.UnescapeString(match[2]), false)
-						skyId = strings.ReplaceAll(skyId, "skype&", "")
+						skyId = strings.ReplaceAll(skyId, patch.AsUserPrefix, "")
 						skyId = strings.ReplaceAll(skyId, "-", ":")
 						// Adapt to the message format sent by the matrix front end
-						matchStr = strings.ReplaceAll(matchStr, match[0] + ":", fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
+						matchStr = strings.ReplaceAll(matchStr, match[0]+":", fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
 						matchStr = strings.ReplaceAll(matchStr, match[0], fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
 					}
 				}
