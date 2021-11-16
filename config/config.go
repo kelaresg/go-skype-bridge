@@ -27,9 +27,9 @@ import (
 
 type Config struct {
 	Homeserver struct {
-		Address string `yaml:"address"`
-		Domain  string `yaml:"domain"`
-		ServerName  string `yaml:"server_name"`
+		Address    string `yaml:"address"`
+		Domain     string `yaml:"domain"`
+		ServerName string `yaml:"server_name"`
 	} `yaml:"homeserver"`
 
 	AppService struct {
