@@ -28,7 +28,7 @@ var (
 	Name = "matrix-skype"
 	URL  = "unknown"
 	// This is changed when making a release
-	Version   = "0.1.1"
+	Version      = "0.1.1"
 	SkypeVersion = ""
 	// These are filled at build time with the -X linker flag
 	Tag       = "unknown"
@@ -74,7 +74,7 @@ func (bridge *Bridge) GenerateRegistration() {
 		fmt.Fprintln(os.Stderr, "Failed to save config:", err)
 		os.Exit(22)
 	}
-	fmt.Println("Registration generated. Add the path to the registration to your Synapse config, restart it, then start the bridge.")
+	fmt.Println("Skype bridge registration file is generated successfully.")
 	os.Exit(0)
 }
 
