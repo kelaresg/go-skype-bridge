@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
+
 	skype "github.com/kelaresg/go-skypeapi"
 	"github.com/kelaresg/matrix-skype/database"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
-	"math"
 	"maunium.net/go/mautrix/patch"
 
 	"sort"
@@ -96,24 +97,8 @@ func (handler *CommandHandler) CommandMux(ce *CommandEvent) {
 		handler.CommandHelp(ce)
 	//case "version":
 	//	handler.CommandVersion(ce)
-	//case "reconnect":
-	//	handler.CommandReconnect(ce)
-	//case "disconnect":
-	//	handler.CommandDisconnect(ce)
 	case "ping":
 		handler.CommandPing(ce)
-	//case "delete-connection":
-	//	handler.CommandDeleteConnection(ce)
-	//case "delete-session":
-	//	handler.CommandDeleteSession(ce)
-	//case "delete-portal":
-	//	handler.CommandDeletePortal(ce)
-	//case "delete-all-portals":
-	//	handler.CommandDeleteAllPortals(ce)
-	//case "dev-test":
-	//	handler.CommandDevTest(ce)
-	//case "set-pl":
-	//	handler.CommandSetPowerLevel(ce)
 	case "logout":
 		handler.CommandLogout(ce)
 	case "login-matrix", "sync", "list", "open", "pm", "invite", "kick", "leave", "join", "create", "share":
@@ -269,8 +254,8 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		RegistrationExpires:  "",
 		LocationHost:         "",
 		EndpointId:           "",
-		Username: username,
-		Password: password,
+		Username:             username,
+		Password:             password,
 	}
 
 	ce.User.Conn.Store = &skype.Store{
@@ -285,7 +270,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	}
 }
 
-func leavePortals(ce *CommandEvent)  {
+func leavePortals(ce *CommandEvent) {
 	portals := ce.User.GetPortals()
 	//newPortals := ce.User.GetPortalsNew()
 	//allPortals := newPortals[0:]
@@ -313,130 +298,6 @@ func leavePortals(ce *CommandEvent)  {
 		leave(portal)
 	}
 }
-
-const cmdDeleteSessionHelp = `delete-session - Delete session information and disconnect from WhatsApp without sending a logout request`
-
-//func (handler *CommandHandler) CommandDeleteSession(ce *CommandEvent) {
-//	if ce.User.Session == nil && ce.User.Conn == nil {
-//		ce.Reply("Nothing to purge: no session information stored and no active connection.")
-//		return
-//	}
-//	ce.User.SetSession(nil)
-//	if ce.User.Conn != nil {
-//		_, _ = ce.User.Conn.Disconnect()
-//		ce.User.Conn.RemoveHandlers()
-//		ce.User.Conn = nil
-//	}
-//	ce.Reply("Session information purged")
-//}
-
-const cmdReconnectHelp = `reconnect - Reconnect to WhatsApp`
-
-//func (handler *CommandHandler) CommandReconnect(ce *CommandEvent) {
-//	if ce.User.Conn == nil {
-//		if ce.User.Session == nil {
-//			ce.Reply("No existing connection and no session. Did you mean `login`?")
-//		} else {
-//			ce.Reply("No existing connection, creating one...")
-//			ce.User.Connect(false)
-//		}
-//		return
-//	}
-//
-//	wasConnected := true
-//	sess, err := ce.User.Conn.Disconnect()
-//	if err == whatsapp.ErrNotConnected {
-//		wasConnected = false
-//	} else if err != nil {
-//		ce.User.log.Warnln("Error while disconnecting:", err)
-//	} else if len(sess.Wid) > 0 {
-//		ce.User.SetSession(&sess)
-//	}
-//
-//	err = ce.User.Conn.Restore()
-//	if err == whatsapp.ErrInvalidSession {
-//		if ce.User.Session != nil {
-//			ce.User.log.Debugln("Got invalid session error when reconnecting, but user has session. Retrying using RestoreWithSession()...")
-//			var sess whatsapp.Session
-//			sess, err = ce.User.Conn.RestoreWithSession(*ce.User.Session)
-//			if err == nil {
-//				ce.User.SetSession(&sess)
-//			}
-//		} else {
-//			ce.Reply("You are not logged in.")
-//			return
-//		}
-//	} else if err == whatsapp.ErrLoginInProgress {
-//		ce.Reply("A login or reconnection is already in progress.")
-//		return
-//	} else if err == whatsapp.ErrAlreadyLoggedIn {
-//		ce.Reply("You were already connected.")
-//		return
-//	}
-//	if err != nil {
-//		ce.User.log.Warnln("Error while reconnecting:", err)
-//		if err.Error() == "restore session connection timed out" {
-//			ce.Reply("Reconnection timed out. Is WhatsApp on your phone reachable?")
-//		} else {
-//			ce.Reply("Unknown error while reconnecting: %v", err)
-//		}
-//		ce.User.log.Debugln("Disconnecting due to failed session restore in reconnect command...")
-//		sess, err := ce.User.Conn.Disconnect()
-//		if err != nil {
-//			ce.User.log.Errorln("Failed to disconnect after failed session restore in reconnect command:", err)
-//		} else if len(sess.Wid) > 0 {
-//			ce.User.SetSession(&sess)
-//		}
-//		return
-//	}
-//	ce.User.ConnectionErrors = 0
-//
-//	var msg string
-//	if wasConnected {
-//		msg = "Reconnected successfully."
-//	} else {
-//		msg = "Connected successfully."
-//	}
-//	ce.Reply(msg)
-//	ce.User.PostLogin()
-//}
-
-const cmdDeleteConnectionHelp = `delete-connection - Disconnect ignoring errors and delete internal connection state.`
-
-//func (handler *CommandHandler) CommandDeleteConnection(ce *CommandEvent) {
-//	if ce.User.Conn == nil {
-//		ce.Reply("You don't have a WhatsApp connection.")
-//		return
-//	}
-//	sess, err := ce.User.Conn.Disconnect()
-//	if err == nil && len(sess.Wid) > 0 {
-//		ce.User.SetSession(&sess)
-//	}
-//	ce.User.Conn.RemoveHandlers()
-//	ce.User.Conn = nil
-//	ce.Reply("Successfully disconnected. Use the `reconnect` command to reconnect.")
-//}
-
-const cmdDisconnectHelp = `disconnect - Disconnect from WhatsApp (without logging out)`
-
-//func (handler *CommandHandler) CommandDisconnect(ce *CommandEvent) {
-//	if ce.User.Conn == nil {
-//		ce.Reply("You don't have a WhatsApp connection.")
-//		return
-//	}
-//	sess, err := ce.User.Conn.Disconnect()
-//	if err == whatsapp.ErrNotConnected {
-//		ce.Reply("You were not connected.")
-//		return
-//	} else if err != nil {
-//		ce.User.log.Warnln("Error while disconnecting:", err)
-//		ce.Reply("Unknown error while disconnecting: %v", err)
-//		return
-//	} else if len(sess.Wid) > 0 {
-//		ce.User.SetSession(&sess)
-//	}
-//	ce.Reply("Successfully disconnected. Use the `reconnect` command to reconnect.")
-//}
 
 const cmdPingHelp = `ping - Check your connection to Skype.`
 
@@ -481,10 +342,6 @@ func (handler *CommandHandler) CommandHelp(ce *CommandEvent) {
 		cmdPrefix + cmdHelpHelp,
 		cmdPrefix + cmdLoginHelp,
 		cmdPrefix + cmdLogoutHelp,
-		//cmdPrefix + cmdDeleteSessionHelp,
-		//cmdPrefix + cmdReconnectHelp,
-		//cmdPrefix + cmdDisconnectHelp,
-		//cmdPrefix + cmdDeleteConnectionHelp,
 		cmdPrefix + cmdPingHelp,
 		//cmdPrefix + cmdLoginMatrixHelp,
 		//cmdPrefix + cmdLogoutMatrixHelp,
@@ -492,16 +349,12 @@ func (handler *CommandHandler) CommandHelp(ce *CommandEvent) {
 		cmdPrefix + cmdListHelp,
 		cmdPrefix + cmdOpenHelp,
 		cmdPrefix + cmdPMHelp,
-		//cmdPrefix + cmdSetPowerLevelHelp,
-		//cmdPrefix + cmdDeletePortalHelp,
-		//cmdPrefix + cmdDeleteAllPortalsHelp,
 		cmdPrefix + cmdCreateHelp,
 		cmdPrefix + cmdInviteHelp,
 		cmdPrefix + cmdKickHelp,
 		cmdPrefix + cmdLeaveHelp,
 		cmdPrefix + cmdJoinHelp,
 		cmdPrefix + cmdShareHelp,
-
 	}, "\n* "))
 }
 
@@ -531,7 +384,7 @@ func (handler *CommandHandler) CommandSync(ce *CommandEvent) {
 	ce.Reply("Sync complete.")
 }
 
-func syncAll(user *User, create bool)  {
+func syncAll(user *User, create bool) {
 	//ce.Reply("Syncing contacts...")
 	user.syncPuppets(nil)
 	//ce.Reply("Syncing chats...")
@@ -1012,7 +865,7 @@ func (handler *CommandHandler) CommandKick(ce *CommandEvent) {
 	handler.log.Debugln("Kicking", userNumbers, "to", converationId)
 	err := user.Conn.HandleGroupKick(converationId, userNumbers)
 	if err != nil {
-		handler.log.Errorln("Kicking err",  err)
+		handler.log.Errorln("Kicking err", err)
 		ce.Reply("Please confirm that you have permission to kick members.")
 	} else {
 		ce.Reply("Remove operation completed.\nIf the member has not been removed, please check your permissions or command parameters")
@@ -1040,13 +893,13 @@ func (handler *CommandHandler) CommandLeave(ce *CommandEvent) {
 
 	if len(portal.MXID) > 0 {
 		cli := handler.bridge.Bot
-		fmt.Println("cli appurl:", cli.Prefix, cli.AppServiceUserID, cli.HomeserverURL.String(), )
+		fmt.Println("cli appurl:", cli.Prefix, cli.AppServiceUserID, cli.HomeserverURL.String())
 		//res, errLeave := cli.LeaveRoom(portal.MXID)
 		//cli.AppServiceUserID = ce.User.MXID
 		u := cli.BuildURL("rooms", portal.MXID, "leave")
 		fmt.Println(u)
 		resp := mautrix.RespLeaveRoom{}
-		res , err := cli.MakeRequest("POST", u, struct{}{}, &resp)
+		res, err := cli.MakeRequest("POST", u, struct{}{}, &resp)
 		fmt.Println("leave res : ", res)
 		fmt.Println("leave res err: ", err)
 		//if errLeave != nil {
@@ -1062,9 +915,10 @@ func (handler *CommandHandler) CommandLeave(ce *CommandEvent) {
 	ce.Reply("Leave operation completed and successful.")
 
 }
+
 const cmdShareHelp = `share <_group ID_> - Generate a link to join the group.`
 
-func (handler *CommandHandler)  CommandShare(ce *CommandEvent) {
+func (handler *CommandHandler) CommandShare(ce *CommandEvent) {
 	if len(ce.Args) == 0 {
 		ce.Reply("**Usage:** `share <group id>`")
 		return
@@ -1080,7 +934,7 @@ func (handler *CommandHandler)  CommandShare(ce *CommandEvent) {
 	}
 	//set enabled
 	enstr := map[string]string{
-		"joiningenabled":"true",
+		"joiningenabled": "true",
 	}
 	_, err := user.Conn.SetConversationThreads(converationId, enstr)
 	if err != nil {
@@ -1202,7 +1056,7 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 
 	selfMembers := skype.Members{}
 	member2 := skype.Member{
-		Id:   strings.Replace(ce.User.JID, skypeExt.NewUserSuffix,"", 1),
+		Id:   strings.Replace(ce.User.JID, skypeExt.NewUserSuffix, "", 1),
 		Role: "Admin",
 	}
 

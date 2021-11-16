@@ -85,10 +85,10 @@ func (bridge *Bridge) GetUserByJID(userID types.SkypeID) *User {
 	return user
 }
 
-func (user *User) getSkypeIdByMixId() (skypeId string){
+func (user *User) getSkypeIdByMixId() (skypeId string) {
 	mixIdArr := strings.Split(string(user.MXID), "&")
 	idArr := strings.Split(mixIdArr[1], ":"+user.bridge.Config.Homeserver.Domain)
-	skypeId = strings.Replace(idArr[0], "-",":",2)
+	skypeId = strings.Replace(idArr[0], "-", ":", 2)
 	return skypeId
 }
 
@@ -363,7 +363,7 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 
 	user.Conn.Subscribes() // subscribe basic event
 	err = user.Conn.Conn.ContactList(user.Conn.UserProfile.Username)
-	if err == nil{
+	if err == nil {
 		var userIds []string
 		for _, contact := range user.Conn.Store.Contacts {
 			if strings.Index(contact.PersonId, "28:") > -1 {
@@ -400,7 +400,7 @@ func (user *User) monitorSession(ce *CommandEvent) {
 		}
 	}
 
-	item, ok := <- user.Conn.Refresh
+	item, ok := <-user.Conn.Refresh
 	if !ok {
 		user.Conn.Refresh = nil
 	}
@@ -463,7 +463,7 @@ func (user *User) tryAutomaticDoublePuppeting() {
 		return
 	}
 	fmt.Println("tryAutomaticDoublePuppeting2", user.MXID)
-	_,_ = user.UpdateAccessToken(puppet)
+	_, _ = user.UpdateAccessToken(puppet)
 }
 
 func (user *User) UpdateAccessToken(puppet *Puppet) (err error, accessToken string) {
@@ -516,7 +516,7 @@ func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll b
 	existingKeys := user.GetInCommunityMap()
 	portalKeys := make([]database.PortalKeyWithMeta, 0, len(chatMap))
 	for _, chat := range chatMap {
-		t, err := time.Parse(time.RFC3339,chat.LastMessage.ComposeTime)
+		t, err := time.Parse(time.RFC3339, chat.LastMessage.ComposeTime)
 		if err != nil {
 			t = time.Now()
 			if chat.Properties.ConversationStatus != "Accepted" && len(chat.ThreadProperties.Lastjoinat) < 1 {
@@ -612,12 +612,12 @@ func (user *User) syncPuppets(contacts map[string]skype.Contact) {
 	if user.Conn.UserProfile.LastName != "" {
 		username = user.Conn.UserProfile.FirstName + " " + user.Conn.UserProfile.LastName
 	}
-	contacts["8:" + user.Conn.UserProfile.Username + skypeExt.NewUserSuffix] = skype.Contact{
+	contacts["8:"+user.Conn.UserProfile.Username+skypeExt.NewUserSuffix] = skype.Contact{
 		Profile: skype.UserInfoProfile{
 			AvatarUrl: user.Conn.UserProfile.AvatarUrl,
 		},
 		DisplayName: username,
-		PersonId: user.Conn.UserProfile.Username,
+		PersonId:    user.Conn.UserProfile.Username,
 	}
 	for personId, contact := range contacts {
 		fmt.Println("Syncing puppet info from contacts", personId)
@@ -716,7 +716,7 @@ func (user *User) HandleJSONParseError(err error) {
 
 func (user *User) PortalKey(jid types.SkypeID) database.PortalKey {
 	fmt.Println("User PortalKey jid: ", jid)
-	fmt.Println("User PortalKey  user.JID: ",  user.JID)
+	fmt.Println("User PortalKey  user.JID: ", user.JID)
 	return database.NewPortalKey(jid, user.JID)
 }
 
@@ -855,14 +855,14 @@ func (user *User) HandlePresence(info skype.Resource) {
 	sendId := info.SendId + skypeExt.NewUserSuffix
 	puppet := user.bridge.GetPuppetByJID(sendId)
 
-	if _,ok := user.contactsPresence[sendId]; ok {
+	if _, ok := user.contactsPresence[sendId]; ok {
 		user.contactsPresence[sendId].Availability = info.Availability
 		user.contactsPresence[sendId].Status = info.Status
 	} else {
-		user.contactsPresence[sendId] = &skypeExt.Presence {
-			Id: sendId,
+		user.contactsPresence[sendId] = &skypeExt.Presence{
+			Id:           sendId,
 			Availability: info.Availability,
-			Status: info.Status,
+			Status:       info.Status,
 		}
 	}
 
@@ -876,20 +876,20 @@ func (user *User) HandlePresence(info skype.Resource) {
 			puppet.typingIn = ""
 			puppet.typingAt = 0
 		} else {
-			 _ = puppet.DefaultIntent().SetPresence("online")
+			_ = puppet.DefaultIntent().SetPresence("online")
 		}
-	//case whatsapp.PresenceComposing:
-	//	portal := user.GetPortalByJID(info.Jid)
-	//	if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
-	//		if puppet.typingIn == portal.MXID {
-	//			return
-	//		}
-	//		_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
-	//	}
-	//	puppet.typingIn = portal.MXID
-	//	puppet.typingAt = time.Now().Unix()
-	//	_, _ = puppet.IntentFor(portal).UserTyping(portal.MXID, true, 15*1000)
-	//	_ = puppet.DefaultIntent().SetPresence("online")
+		//case whatsapp.PresenceComposing:
+		//	portal := user.GetPortalByJID(info.Jid)
+		//	if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
+		//		if puppet.typingIn == portal.MXID {
+		//			return
+		//		}
+		//		_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
+		//	}
+		//	puppet.typingIn = portal.MXID
+		//	puppet.typingAt = time.Now().Unix()
+		//	_, _ = puppet.IntentFor(portal).UserTyping(portal.MXID, true, 15*1000)
+		//	_ = puppet.DefaultIntent().SetPresence("online")
 	}
 }
 
@@ -1038,7 +1038,7 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 			url = url + "/views/swx_avatar"
 		}
 		fmt.Println()
-		fmt.Println("HandleChatUpdateL picture:", url )
+		fmt.Println("HandleChatUpdateL picture:", url)
 		fmt.Println()
 		avatar := &skypeExt.ProfilePicInfo{
 			URL:    url,
@@ -1059,33 +1059,32 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 		go portal.membershipRemove(cmd.Content)
 	case "":
 		if skypeExt.ChatActionType(cmd.Type) == skypeExt.ChatActionThread {
-			if len(cmd.ETag) > 0 &&  len(cmd.Properties.Capabilities) < 1{
+			if len(cmd.ETag) > 0 && len(cmd.Properties.Capabilities) < 1 {
 				portal.Delete()
 				portal.Cleanup(false)
 			}
 		}
 
-	//case skypeExt.ChatActionAddTopic:
-	//	go portal.UpdateTopic(cmd.Data.AddTopic.Topic, cmd.Data.SenderJID)
-	//case skypeExt.ChatActionRemoveTopic:
-	//	go portal.UpdateTopic("", cmd.Data.SenderJID)
-	//case skypeExt.ChatActionPromote:
-	//	go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, true)
-	//case skypeExt.ChatActionDemote:
-	//	go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, false)
-	//case skypeExt.ChatActionAnnounce:
-	//	go portal.RestrictMessageSending(cmd.Data.Announce)
-	//case skypeExt.ChatActionRestrict:
-	//	go portal.RestrictMetadataChanges(cmd.Data.Restrict)
-	//case skypeExt.ChatActionAdd:
-	//	go portal.membershipAdd(user, cmd.Jid)
-	//case skypeExt.ChatActionRemove:
-	//	go portal.membershipRemove(cmd.Data.MemberAction.JIDs, cmd.Data.Action)
-	//case skypeExt.ChatActionIntroduce:
-	//	go portal.membershipAdd(user, cmd.JID)
+		//case skypeExt.ChatActionAddTopic:
+		//	go portal.UpdateTopic(cmd.Data.AddTopic.Topic, cmd.Data.SenderJID)
+		//case skypeExt.ChatActionRemoveTopic:
+		//	go portal.UpdateTopic("", cmd.Data.SenderJID)
+		//case skypeExt.ChatActionPromote:
+		//	go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, true)
+		//case skypeExt.ChatActionDemote:
+		//	go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, false)
+		//case skypeExt.ChatActionAnnounce:
+		//	go portal.RestrictMessageSending(cmd.Data.Announce)
+		//case skypeExt.ChatActionRestrict:
+		//	go portal.RestrictMetadataChanges(cmd.Data.Restrict)
+		//case skypeExt.ChatActionAdd:
+		//	go portal.membershipAdd(user, cmd.Jid)
+		//case skypeExt.ChatActionRemove:
+		//	go portal.membershipRemove(cmd.Data.MemberAction.JIDs, cmd.Data.Action)
+		//case skypeExt.ChatActionIntroduce:
+		//	go portal.membershipAdd(user, cmd.JID)
 	}
 }
-
 
 //func (user *User) HandleChatUpdate(cmd whatsappExt.ChatUpdate) {
 //	if cmd.Command != whatsappExt.ChatUpdateCommandAction {
