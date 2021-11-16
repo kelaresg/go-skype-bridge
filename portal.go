@@ -2,14 +2,13 @@ package main
 
 import (
 	"bytes"
+
 	"github.com/gabriel-vasile/mimetype"
 	"maunium.net/go/mautrix/patch"
 
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
-	skype "github.com/kelaresg/go-skypeapi"
-	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 	"html"
 	"image"
 	"image/gif"
@@ -23,6 +22,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	skype "github.com/kelaresg/go-skypeapi"
+	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 
 	"github.com/pkg/errors"
 	log "maunium.net/go/maulogger/v2"
@@ -205,16 +207,16 @@ func (portal *Portal) handleMessage(msg PortalMessage) {
 			portal.HandleTextMessage(msg.source, data)
 		case "RichText/UriObject":
 			//portal.HandleMediaMessage(msg.source, data.Download, data.Thumbnail, data.Info, data.ContextInfo, data.Type, data.Caption, 0, false)
-			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType,nil, data,false)
+			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType, nil, data, false)
 		case "RichText/Media_Video":
 			//portal.HandleMediaMessage(msg.source, data.Download, data.Thumbnail, data.Info, data.ContextInfo, data.Type, data.Caption, 0, false)
-			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType,nil, data,false)
+			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType, nil, data, false)
 		case "RichText/Media_AudioMsg":
 			//portal.HandleMediaMessage(msg.source, data.Download, data.Thumbnail, data.Info, data.ContextInfo, data.Type, data.Caption, 0, false)
-			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType,nil, data,false)
+			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType, nil, data, false)
 		case "RichText/Media_GenericFile":
 			//portal.HandleMediaMessage(msg.source, data.Download, data.Thumbnail, data.Info, data.ContextInfo, data.Type, data.Caption, 0, false)
-			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType,nil, data,false)
+			portal.HandleMediaMessageSkype(msg.source, data.Download, data.MessageType, nil, data, false)
 		case "RichText/Contacts":
 			portal.HandleContactMessageSkype(msg.source, data)
 		case "RichText/Location":
@@ -297,7 +299,7 @@ func (portal *Portal) markHandledSkype(source *User, message *skype.Resource, mx
 	}
 
 	msg.Content = message.Content
-	if len(message.Id)>0 {
+	if len(message.Id) > 0 {
 		msg.ID = message.Id
 	}
 	msg.Insert()
@@ -341,7 +343,7 @@ func (portal *Portal) getMessageIntentSkype(user *User, info skype.Resource) *ap
 	fmt.Println()
 	fmt.Println("getMessageIntentSkype")
 	fmt.Println()
-	return portal.bridge.GetPuppetByJID(info.SendId+skypeExt.NewUserSuffix).IntentFor(portal)
+	return portal.bridge.GetPuppetByJID(info.SendId + skypeExt.NewUserSuffix).IntentFor(portal)
 }
 
 func (portal *Portal) handlePrivateChatFromMe(fromMe bool) func() {
@@ -566,12 +568,12 @@ func (portal *Portal) UpdateMetadata(user *User) bool {
 	}
 	// portal.Topic = ""
 	//if metadata.Status != 0 {
-		// 401: access denied
-		// 404: group does (no longer) exist
-		// 500: ??? happens with status@broadcast
+	// 401: access denied
+	// 404: group does (no longer) exist
+	// 500: ??? happens with status@broadcast
 
-		// TODO: update the room, e.g. change priority level
-		//   to send messages to moderator
+	// TODO: update the room, e.g. change priority level
+	//   to send messages to moderator
 	//	return false
 	//}
 
@@ -665,8 +667,8 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 		update = portal.UpdateMetadata(user) || update
 	}
 	// if !portal.IsStatusBroadcastRoom() {
-		//fmt.Println("SyncSkype portal.UpdateAvatar", portal.MXID)
-		// update = portal.UpdateAvatar(user, nil) || update
+	//fmt.Println("SyncSkype portal.UpdateAvatar", portal.MXID)
+	// update = portal.UpdateAvatar(user, nil) || update
 	// }
 	if update {
 		fmt.Println("SyncSkype portal.Update", portal.MXID)
@@ -1009,7 +1011,7 @@ func (portal *Portal) handleHistory(user *User, messages []skype.Resource) {
 		}
 		t, _ := time.Parse(time.RFC3339, message.ComposeTime)
 		message.Timestamp = t.Unix()
-		portal.handleMessage(PortalMessage{ portal.Key.JID, user, message, uint64(message.Timestamp)})
+		portal.handleMessage(PortalMessage{portal.Key.JID, user, message, uint64(message.Timestamp)})
 	}
 }
 
@@ -1088,7 +1090,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 
 	var metadata *skypeExt.GroupInfo
 	if portal.IsPrivateChat() {
-		puppet := portal.bridge.GetPuppetByJID(portal.Key.JID+skypeExt.NewUserSuffix)
+		puppet := portal.bridge.GetPuppetByJID(portal.Key.JID + skypeExt.NewUserSuffix)
 		if portal.bridge.Config.Bridge.PrivateChatPortalMeta {
 			portal.Name = puppet.Displayname
 			portal.AvatarURL = puppet.AvatarURL
@@ -1288,7 +1290,7 @@ func (portal *Portal) IsStatusBroadcastRoom() bool {
 func (portal *Portal) MainIntent() *appservice.IntentAPI {
 	if portal.IsPrivateChat() {
 		fmt.Println("IsPrivateChat")
-		return portal.bridge.GetPuppetByJID(portal.Key.JID+skypeExt.NewUserSuffix).DefaultIntent()
+		return portal.bridge.GetPuppetByJID(portal.Key.JID + skypeExt.NewUserSuffix).DefaultIntent()
 	}
 	fmt.Println("not IsPrivateChat")
 	return portal.bridge.Bot
@@ -1469,15 +1471,15 @@ func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 			msg := source.bridge.DB.Message.GetByJID(portal.Key, message.SkypeEditedId)
 			if msg != nil && len(msg.MXID) > 0 {
 				inRelateTo := &event.RelatesTo{
-					Type: event.RelReplace,
+					Type:    event.RelReplace,
 					EventID: msg.MXID,
 				}
 				content.SetRelatesTo(inRelateTo)
 				content.NewContent = &event.MessageEventContent{
-					MsgType: content.MsgType,
-					Body: content.Body,
+					MsgType:       content.MsgType,
+					Body:          content.Body,
 					FormattedBody: content.FormattedBody,
-					Format: content.Format,
+					Format:        content.Format,
 				}
 			}
 		}
@@ -1491,7 +1493,7 @@ func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 }
 
 func (portal *Portal) trySendMessage(intent *appservice.IntentAPI, eventType event.Type, content interface{}, source *User, message skype.Resource) (resp *mautrix.RespSendEvent, err error) {
-	resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp * 1000)
+	resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp*1000)
 	if err != nil {
 		portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
 		if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
@@ -1499,7 +1501,7 @@ func (portal *Portal) trySendMessage(intent *appservice.IntentAPI, eventType eve
 			err, accessToken := source.UpdateAccessToken(puppet)
 			if err == nil && accessToken != "" {
 				intent.AccessToken = accessToken
-				resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp * 1000)
+				resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp*1000)
 				if err != nil {
 					portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
 				}
@@ -1511,7 +1513,7 @@ func (portal *Portal) trySendMessage(intent *appservice.IntentAPI, eventType eve
 				UserID: intent.UserID,
 			})
 			if err == nil {
-				resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp * 1000)
+				resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp*1000)
 			}
 		}
 	}
@@ -1526,14 +1528,14 @@ func (portal *Portal) HandleLocationMessageSkype(source *User, message skype.Res
 	if intent == nil {
 		return
 	}
-	locationMessage, err:= message.ParseLocation()
+	locationMessage, err := message.ParseLocation()
 	if err != nil {
 		portal.log.Errorfln("Failed to parse contact message of %s: %v", message, err)
 		return
 	}
 
 	latitude, _ := strconv.Atoi(locationMessage.Latitude)
-	longitude, _:= strconv.Atoi(locationMessage.Longitude)
+	longitude, _ := strconv.Atoi(locationMessage.Longitude)
 	geo := fmt.Sprintf("geo:%.6f,%.6f", float32(latitude)/1000000, float32(longitude)/1000000)
 	content := &event.MessageEventContent{
 		MsgType:       event.MsgText,
@@ -1567,7 +1569,7 @@ func (portal *Portal) HandleContactMessageSkype(source *User, message skype.Reso
 	if intent == nil {
 		return
 	}
-	contactMessage, err:= message.ParseContact()
+	contactMessage, err := message.ParseContact()
 	if err != nil {
 		portal.log.Errorfln("Failed to parse contact message of %s: %v", message, err)
 		return
@@ -1723,15 +1725,9 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 	} else {
 		content.URL = uploaded.ContentURI.CUString()
 	}
-	// portal.SetReplySkype(content, info)
 
-	fmt.Println()
-	fmt.Println("mediaMessage.UrlThumbnail", mediaMessage.UrlThumbnail)
-	fmt.Println()
-	fmt.Printf("%+v", mediaMessage)
-	fmt.Println()
 	thumbnail, err = skype.Download(mediaMessage.UrlThumbnail, source.Conn.Conn, 0)
-	if  err != nil {
+	if err != nil {
 		portal.log.Errorfln("Failed to download thumbnail for %s: %v", err)
 	}
 
@@ -1756,14 +1752,6 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 				Height:   thumbnailCfg.Height,
 				MimeType: thumbnailMime,
 			}
-			fmt.Println("content.Info")
-			fmt.Printf("%+v", content)
-			fmt.Println()
-			fmt.Printf("%+v", *content.Info.ThumbnailInfo)
-			fmt.Println()
-			fmt.Println()
-			fmt.Printf("%+v", content.Info.ThumbnailInfo)
-			fmt.Println()
 		}
 	}
 
@@ -1948,8 +1936,8 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 	clientMessageId := currentTimeNanoStr + fmt.Sprintf("%04v", rand.New(rand.NewSource(time.Now().UnixNano())).Intn(10000))
 	info := &skype.SendMessage{
 		ClientMessageId: clientMessageId,
-		Jid: portal.Key.JID,//receiver id(conversation id)
-		Timestamp: time.Now().Unix(),
+		Jid:             portal.Key.JID, //receiver id(conversation id)
+		Timestamp:       time.Now().Unix(),
 	}
 
 	replyToID := content.GetReplyTo()
@@ -1960,7 +1948,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 		a = strings.Replace(a, "8:", "", 1)
 		tsMs := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
 		r := []rune(tsMs)
-		ts := string(r[:len(r) - 3])
+		ts := string(r[:len(r)-3])
 		msg := portal.bridge.DB.Message.GetByMXID(content.RelatesTo.EventID)
 		if msg != nil && len(msg.JID) > 0 {
 			info.SkypeEditedId = msg.JID
@@ -2020,7 +2008,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			conversation := msg.Chat.Receiver
 			cuid := msg.JID
 			r := []rune(messageId)
-			timestamp := string(r[:len(r) - 3])
+			timestamp := string(r[:len(r)-3])
 			quoteMessage := msg.Content
 
 			puppet := sender.bridge.GetPuppetByJID(msg.Sender)
@@ -2056,11 +2044,10 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 	if evt.Type == event.EventSticker {
 		content.MsgType = event.MsgImage
 	}
-
-	fmt.Println("convertMatrixMessage content.MsgType: ", content.MsgType)
-	fmt.Println("convertMatrixMessage content.Body: ", content.Body)
-	fmt.Println("convertMatrixMessage content.NewBody: ", content.NewContent)
-	fmt.Println("convertMatrixMessage content.FormattedBody: ", content.FormattedBody)
+	portal.log.Debugln("convertMatrixMessage content.MsgType: ", content.MsgType)
+	portal.log.Debugln("convertMatrixMessage content.Body: ", content.Body)
+	portal.log.Debugln("convertMatrixMessage content.NewBody: ", content.NewContent)
+	portal.log.Debugln("convertMatrixMessage content.FormattedBody: ", content.FormattedBody)
 	info.Type = string(content.MsgType)
 	switch content.MsgType {
 	case event.MsgText, event.MsgEmote, event.MsgNotice:
@@ -2080,15 +2067,15 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			// mention user message
 			r := regexp.MustCompile(`(?m)<a[^>]+\bhref="(.*?)://` + portal.bridge.Config.Homeserver.ServerName + `/#/@([^"]+):(.*?)">(.*?)</a>`)
 			matches := r.FindAllStringSubmatch(matchStr, -1)
-			fmt.Println("matches: ", matches)
+			portal.log.Debugln("matches: ", matches)
 			if len(matches) > 0 {
 				for _, match := range matches {
 					if len(match) > 2 {
 						skyId := patch.ParseLocalPart(html.UnescapeString(match[2]), false)
-						skyId = strings.ReplaceAll(skyId, "skype&", "")
+						skyId = strings.ReplaceAll(skyId, patch.AsUserPrefix, "")
 						skyId = strings.ReplaceAll(skyId, "-", ":")
 						// Adapt to the message format sent by the matrix front end
-						matchStr = strings.ReplaceAll(matchStr, match[0] + ":", fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
+						matchStr = strings.ReplaceAll(matchStr, match[0]+":", fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
 						matchStr = strings.ReplaceAll(matchStr, match[0], fmt.Sprintf(`<at id="%s">%s</at>`, skyId, match[4]))
 					}
 				}
@@ -2106,15 +2093,15 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 
 		if len(content.FormattedBody) > 0 {
 			info.SendTextMessage = &skype.SendTextMessage{
-				Content : content.FormattedBody,
+				Content: content.FormattedBody,
 			}
 		} else {
 			info.SendTextMessage = &skype.SendTextMessage{
-				Content : content.Body,
+				Content: content.Body,
 			}
 		}
 	case event.MsgImage:
-		caption, fileSize , data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
+		caption, fileSize, data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
 		//if media == nil {
 		//	return nil, sender, content
 		//}
@@ -2127,7 +2114,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			Duration: 0,
 		}
 	case event.MsgVideo:
-		_, fileSize , data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
+		_, fileSize, data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
 		duration := uint32(content.GetInfo().Duration)
 		info.SendMediaMessage = &skype.SendMediaMessage{
 			FileName: content.Body,
@@ -2137,7 +2124,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			Duration: int(duration),
 		}
 	case event.MsgAudio:
-		_, fileSize , data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
+		_, fileSize, data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
 		duration := uint32(content.GetInfo().Duration)
 		info.SendMediaMessage = &skype.SendMediaMessage{
 			FileName: content.Body,
@@ -2147,7 +2134,7 @@ func (portal *Portal) convertMatrixMessageSkype(sender *User, evt *event.Event) 
 			Duration: int(duration),
 		}
 	case event.MsgFile:
-		_, fileSize , data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
+		_, fileSize, data := portal.preprocessMatrixMediaSkype(relaybotFormatted, content, evt.ID)
 		info.SendMediaMessage = &skype.SendMediaMessage{
 			FileName: content.Body,
 			FileType: content.GetInfo().MimeType,
@@ -2197,12 +2184,11 @@ func (portal *Portal) sendDeliveryReceipt(eventID id.EventID) {
 var timeout = errors.New("message sending timed out")
 
 func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
-	fmt.Println("portal HandleMatrixMessage sender.JID: ", sender.JID)
-	fmt.Println("portal HandleMatrixMessage portal.Key.Receiver: ", portal.Key.Receiver)
-	fmt.Println("portal HandleMatrixMessage portal.Key.JID: ", portal.Key.JID)
-	if !portal.HasRelaybot() && (
-		(portal.IsPrivateChat() && sender.JID != portal.Key.Receiver) ||
-			portal.sendMatrixConnectionError(sender, evt.ID)) {
+	portal.log.Debugln("HandleMatrixMessage sender.JID: ", sender.JID)
+	portal.log.Debugln("HandleMatrixMessage portal.Key.Receiver: ", portal.Key.Receiver)
+	portal.log.Debugln("HandleMatrixMessage portal.Key.JID: ", portal.Key.JID)
+	if !portal.HasRelaybot() && ((portal.IsPrivateChat() && sender.JID != portal.Key.Receiver) ||
+		portal.sendMatrixConnectionError(sender, evt.ID)) {
 		return
 	}
 	portal.log.Debugfln("Received event %s", evt.ID)
@@ -2222,9 +2208,9 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 	fmt.Println("portal HandleMatrixMessage start markHandledSkype: ")
 	portal.markHandledSkype(sender, &skype.Resource{
 		ClientMessageId: info.ClientMessageId,
-		Jid: portal.Key.JID,//receiver id(conversation id)
-		Timestamp: time.Now().Unix(),
-		Content: content,
+		Jid:             portal.Key.JID, //receiver id(conversation id)
+		Timestamp:       time.Now().Unix(),
+		Content:         content,
 	}, evt.ID)
 	portal.log.Debugln("Sending event", evt.ID, "to Skype")
 
@@ -2450,7 +2436,7 @@ func (portal *Portal) HandleMatrixLeave(sender *User) {
 }
 
 func (portal *Portal) HandleMatrixKick(sender *User, evt *event.Event) {
-	jid, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
+	jid, _ := portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
 	puppet := portal.bridge.GetPuppetByJID(jid)
 	if puppet != nil {
 		jid = strings.Replace(jid, skypeExt.NewUserSuffix, "", 1)
@@ -2463,7 +2449,7 @@ func (portal *Portal) HandleMatrixKick(sender *User, evt *event.Event) {
 }
 
 func (portal *Portal) HandleMatrixInvite(sender *User, evt *event.Event) {
-	jid, _:= portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
+	jid, _ := portal.bridge.ParsePuppetMXID(id.UserID(evt.GetStateKey()))
 	puppet := portal.bridge.GetPuppetByJID(jid)
 	if puppet != nil {
 		jid = strings.Replace(jid, skypeExt.NewUserSuffix, "", 1)
