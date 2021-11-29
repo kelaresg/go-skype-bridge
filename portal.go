@@ -2194,7 +2194,7 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 	portal.log.Debugfln("Received event %s", evt.ID)
 	info, sender, _ := portal.convertMatrixMessageSkype(sender, evt)
 	if info == nil {
-		fmt.Println("portal HandleMatrixMessage info is nil: ")
+		portal.log.Debugfln("portal HandleMatrixMessage info is nil: ")
 		return
 	}
 
@@ -2205,7 +2205,7 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 		content = info.SendTextMessage.Content
 	}
 
-	fmt.Println("portal HandleMatrixMessage start markHandledSkype: ")
+	portal.log.Debugln("portal HandleMatrixMessage start markHandledSkype: ")
 	portal.markHandledSkype(sender, &skype.Resource{
 		ClientMessageId: info.ClientMessageId,
 		Jid:             portal.Key.JID, //receiver id(conversation id)
@@ -2216,7 +2216,7 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 
 	errChan := make(chan error, 1)
 	//go sender.Conn.Conn.SendMsg(portal.Key.JID, info.Content, info.ClientMessageId, errChan)
-	go SendMsg(sender, portal.Key.JID, info, errChan)
+	go portal.SendMsg(sender, portal.Key.JID, info, errChan)
 	var err error
 	var errorEventID id.EventID
 	select {
@@ -2249,26 +2249,26 @@ func (portal *Portal) HandleMatrixMessage(sender *User, evt *event.Event) {
 	}
 }
 
-func SendMsg(sender *User, chatThreadId string, content *skype.SendMessage, output chan<- error) (err error) {
-	fmt.Println("message SendMsg type: ", content.Type)
+func (portal *Portal) SendMsg(sender *User, chatThreadId string, content *skype.SendMessage, output chan<- error) (err error) {
+	portal.log.Debugln("message SendMsg type: ", content.Type)
 	if sender.Conn.LoginInfo != nil && sender.Conn.LoggedIn != false {
 		switch event.MessageType(content.Type) {
 		case event.MsgText, event.MsgEmote, event.MsgNotice:
 			err = sender.Conn.SendText(chatThreadId, content)
 		case event.MsgImage:
-			fmt.Println("message SendMsg type m.image: ", content.Type)
+			portal.log.Debugln("message SendMsg type m.image: ", content.Type)
 			err = sender.Conn.SendFile(chatThreadId, content)
 		case event.MsgVideo:
-			fmt.Println("message SendMsg type m.video: ", content.Type)
+			portal.log.Debugln("message SendMsg type m.video: ", content.Type)
 			err = sender.Conn.SendFile(chatThreadId, content)
 		case event.MsgAudio:
-			fmt.Println("message SendMsg type m.audio: ", content.Type)
+			portal.log.Debugln("message SendMsg type m.audio: ", content.Type)
 			err = sender.Conn.SendFile(chatThreadId, content)
 		case event.MsgFile:
-			fmt.Println("message SendMsg type m.file: ", content.Type)
+			portal.log.Debugln("message SendMsg type m.file: ", content.Type)
 			err = sender.Conn.SendFile(chatThreadId, content)
 		case event.MsgLocation:
-			fmt.Println("message SendMsg type m.location: ", content.Type)
+			portal.log.Debugln("message SendMsg type m.location: ", content.Type)
 			//err = c.SendFile(chatThreadId, content)
 		default:
 			err = errors.New("send to skype(unknown message type)")

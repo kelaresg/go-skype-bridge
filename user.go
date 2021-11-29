@@ -5,10 +5,12 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"sort"
+
 	skype "github.com/kelaresg/go-skypeapi"
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 	"maunium.net/go/mautrix/patch"
-	"sort"
+
 	//"strconv"
 	"strings"
 	"sync"
@@ -59,11 +61,9 @@ type User struct {
 
 func (bridge *Bridge) GetUserByMXID(userID id.UserID) *User {
 	_, isPuppet := bridge.ParsePuppetMXID(userID)
-	fmt.Println("GetUserByMXID0", userID)
-	fmt.Println("GetUserByMXID1", bridge.Bot.UserID)
+	bridge.Log.Debugln("GetUserByMXID userID", userID)
+	bridge.Log.Debugln("GetUserByMXID bridge.Bot.UserID", bridge.Bot.UserID)
 	if isPuppet || userID == bridge.Bot.UserID {
-		fmt.Println("GetUserByMXID2", userID)
-		fmt.Println("GetUserByMXID3", bridge.Bot.UserID)
 		return nil
 	}
 	bridge.usersLock.Lock()
@@ -86,6 +86,7 @@ func (bridge *Bridge) GetUserByJID(userID types.SkypeID) *User {
 }
 
 func (user *User) getSkypeIdByMixId() (skypeId string) {
+	// TODO check this
 	mixIdArr := strings.Split(string(user.MXID), "&")
 	idArr := strings.Split(mixIdArr[1], ":"+user.bridge.Config.Homeserver.Domain)
 	skypeId = strings.Replace(idArr[0], "-", ":", 2)
@@ -362,7 +363,7 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	ce.Reply("Successfully logged in as @" + username + ", orgid is " + orgId)
 
 	user.Conn.Subscribes() // subscribe basic event
-	err = user.Conn.Conn.ContactList(user.Conn.UserProfile.Username)
+	err = user.Conn.ContactList(user.Conn.UserProfile.Username)
 	if err == nil {
 		var userIds []string
 		for _, contact := range user.Conn.Store.Contacts {
@@ -620,11 +621,8 @@ func (user *User) syncPuppets(contacts map[string]skype.Contact) {
 		PersonId:    user.Conn.UserProfile.Username,
 	}
 	for personId, contact := range contacts {
-		fmt.Println("Syncing puppet info from contacts", personId)
-		user.log.Infoln("Syncing puppet info from contacts", strings.HasSuffix(personId, skypeExt.NewUserSuffix))
-		fmt.Println("Syncing puppet info from contacts", skypeExt.NewUserSuffix)
+		user.log.Infoln("Syncing puppet info from contacts", personId, skypeExt.NewUserSuffix)
 		if strings.HasSuffix(personId, skypeExt.NewUserSuffix) {
-			fmt.Println("Syncing puppet info from contacts i am coming")
 			puppet := user.bridge.GetPuppetByJID(personId)
 			puppet.Sync(user, contact)
 		}

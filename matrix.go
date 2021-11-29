@@ -155,7 +155,6 @@ func (mx *MatrixHandler) handlePrivatePortal(roomID id.RoomID, inviter *User, pu
 	_, _ = intent.LeaveRoom(roomID)
 }
 
-
 func (mx *MatrixHandler) createPrivatePortalFromInvite(roomID id.RoomID, inviter *User, puppet *Puppet, portal *Portal) {
 	portal.MXID = roomID
 	portal.Topic = "Skype private chat"
@@ -169,21 +168,21 @@ func (mx *MatrixHandler) createPrivatePortalFromInvite(roomID id.RoomID, inviter
 	} else {
 		portal.Name = ""
 	}
-	portal.log.Infoln("Created private chat portal in %s after invite from", roomID, inviter.MXID)
+	mx.log.Infoln("Created private chat portal in %s after invite from", roomID, inviter.MXID)
 	intent := puppet.DefaultIntent()
 
 	if mx.bridge.Config.Bridge.Encryption.Default {
 		_, err := intent.InviteUser(roomID, &mautrix.ReqInviteUser{UserID: mx.bridge.Bot.UserID})
 		if err != nil {
-			portal.log.Warnln("Failed to invite bridge bot to enable e2be:", err)
+			mx.log.Warnln("Failed to invite bridge bot to enable e2be:", err)
 		}
 		err = mx.bridge.Bot.EnsureJoined(roomID)
 		if err != nil {
-			portal.log.Warnln("Failed to join as bridge bot to enable e2be:", err)
+			mx.log.Warnln("Failed to join as bridge bot to enable e2be:", err)
 		}
 		_, err = intent.SendStateEvent(roomID, event.StateEncryption, "", &event.EncryptionEventContent{Algorithm: id.AlgorithmMegolmV1})
 		if err != nil {
-			portal.log.Warnln("Failed to enable e2be:", err)
+			mx.log.Warnln("Failed to enable e2be:", err)
 		}
 		mx.as.StateStore.SetMembership(roomID, inviter.MXID, event.MembershipJoin)
 		mx.as.StateStore.SetMembership(roomID, puppet.MXID, event.MembershipJoin)
@@ -196,7 +195,7 @@ func (mx *MatrixHandler) createPrivatePortalFromInvite(roomID id.RoomID, inviter
 
 	err := portal.FillInitialHistory(inviter)
 	if err != nil {
-		portal.log.Errorln("Failed to fill history:", err)
+		mx.log.Errorln("Failed to fill history:", err)
 	}
 
 	inviter.addPortalToCommunity(portal)
@@ -211,14 +210,10 @@ func (mx *MatrixHandler) HandlePuppetInvite(evt *event.Event, inviter *User, pup
 	}
 	var hasBridgeBot, hasOtherUsers bool
 	for mxid, _ := range members.Joined {
-		fmt.Println()
-		fmt.Println()
-		fmt.Println("HandlePuppetInvite mxid", mxid)
-		fmt.Println("HandlePuppetInvite intent.UserID", intent.UserID)
-		fmt.Println("HandlePuppetInvite patch.Parse(intent.UserID)", id.UserID(patch.Parse(string(intent.UserID))))
-		fmt.Println("HandlePuppetInvite inviter.MXID", inviter.MXID)
-		fmt.Println()
-		fmt.Println()
+		mx.log.Debugfln("HandlePuppetInvite mxid", mxid)
+		mx.log.Debugfln("HandlePuppetInvite intent.UserID", intent.UserID)
+		mx.log.Debugfln("HandlePuppetInvite patch.Parse(intent.UserID)", id.UserID(patch.Parse(string(intent.UserID))))
+		mx.log.Debugfln("HandlePuppetInvite inviter.MXID", inviter.MXID)
 		if mxid == id.UserID(patch.Parse(string(intent.UserID))) || mxid == inviter.MXID {
 			continue
 		} else if mxid == mx.bridge.Bot.UserID {
@@ -240,8 +235,8 @@ func (mx *MatrixHandler) HandlePuppetInvite(evt *event.Event, inviter *User, pup
 }
 
 func (mx *MatrixHandler) HandleMembership(evt *event.Event) {
-	fmt.Println("HandleMembership0 evt.Sender:", evt.Sender)
-	fmt.Println("HandleMembership0 evt.GetStateKey:", evt.GetStateKey())
+	mx.log.Debugfln("HandleMembership evt.Sender:", evt.Sender)
+	mx.log.Debugfln("HandleMembership evt.GetStateKey:", evt.GetStateKey())
 	if _, isPuppet := mx.bridge.ParsePuppetMXID(evt.Sender); evt.Sender == mx.bridge.Bot.UserID || isPuppet {
 		return
 	}
@@ -270,9 +265,9 @@ func (mx *MatrixHandler) HandleMembership(evt *event.Event) {
 		return
 	}
 	isSelf := id.UserID(evt.GetStateKey()) == evt.Sender
-	fmt.Println("HandleMembership isSelf:", isSelf)
-	fmt.Println("HandleMembership id.UserID(evt.GetStateKey()):", id.UserID(evt.GetStateKey()))
-	fmt.Println("HandleMembership evt.Sender:", evt.Sender)
+	mx.log.Debugfln("HandleMembership isSelf:", isSelf)
+	mx.log.Debugfln("HandleMembership id.UserID(evt.GetStateKey()):", id.UserID(evt.GetStateKey()))
+	mx.log.Debugfln("HandleMembership evt.Sender:", evt.Sender)
 	if content.Membership == event.MembershipLeave {
 		if id.UserID(evt.GetStateKey()) == evt.Sender {
 			if evt.Unsigned.PrevContent != nil {
@@ -285,13 +280,10 @@ func (mx *MatrixHandler) HandleMembership(evt *event.Event) {
 				}
 			}
 		} else {
-			fmt.Println()
-			fmt.Println()
-			fmt.Println("HandleMembership evt.RoomID", evt.RoomID)
-			fmt.Println("HandleMembership id.UserID(evt.GetStateKey())", id.UserID(evt.GetStateKey()))
-			fmt.Println("HandleMembership event.MembershipLeave", event.MembershipLeave)
-			fmt.Println("HandleMembership user.", event.MembershipLeave)
-			fmt.Println()
+			mx.log.Debugfln("HandleMembership evt.RoomID", evt.RoomID)
+			mx.log.Debugfln("HandleMembership id.UserID(evt.GetStateKey())", id.UserID(evt.GetStateKey()))
+			mx.log.Debugfln("HandleMembership event.MembershipLeave", event.MembershipLeave)
+			mx.log.Debugfln("HandleMembership user.", event.MembershipLeave)
 			//mx.as.StateStore.SetMembership(evt.RoomID, id.UserID(evt.GetStateKey()), event.MembershipLeave)
 			portal.HandleMatrixKick(user, evt)
 		}
@@ -327,13 +319,13 @@ func (mx *MatrixHandler) HandleRoomMetadata(evt *event.Event) {
 	case *event.RoomAvatarEventContent:
 		data, err := portal.MainIntent().DownloadBytes(content.URL)
 		if err != nil {
-			portal.log.Errorfln("Failed to download media in %v", err)
+			mx.log.Errorfln("Failed to download media in %v", err)
 			return
 		}
 		_, fileId, _, err := user.Conn.UploadFile(portal.Key.JID, &skype.SendMessage{
-			Jid: portal.Key.JID,
+			Jid:             portal.Key.JID,
 			ClientMessageId: "",
-			Type: "avatar/group",
+			Type:            "avatar/group",
 			SendMediaMessage: &skype.SendMediaMessage{
 				FileName: "avatar",
 				RawData:  data,
@@ -359,11 +351,8 @@ func (mx *MatrixHandler) HandleRoomMetadata(evt *event.Event) {
 
 func (mx *MatrixHandler) shouldIgnoreEvent(evt *event.Event) bool {
 	if _, isPuppet := mx.bridge.ParsePuppetMXID(evt.Sender); evt.Sender == mx.bridge.Bot.UserID || isPuppet {
-		fmt.Println()
-		fmt.Printf("shouldIgnoreEvent: isPuppet%+v", isPuppet)
-		fmt.Println()
-		fmt.Printf("shouldIgnoreEvent: isPuppet%+v", evt.Sender)
-		fmt.Println()
+		mx.log.Debugfln("shouldIgnoreEvent: isPuppet%+v", isPuppet)
+		mx.log.Debugfln("shouldIgnoreEvent: isPuppet%+v", evt.Sender)
 		return true
 	}
 	isCustomPuppet, ok := evt.Content.Raw["net.maunium.skype.puppet"].(bool)
@@ -371,20 +360,18 @@ func (mx *MatrixHandler) shouldIgnoreEvent(evt *event.Event) bool {
 		return true
 	}
 	user := mx.bridge.GetUserByMXID(evt.Sender)
-	fmt.Println()
-	fmt.Printf("shouldIgnoreEvent: user%+v", *user)
-	fmt.Println()
+	mx.log.Debugfln("shouldIgnoreEvent: user%+v", *user)
 	if !user.RelaybotWhitelisted {
-		fmt.Println("user.RelaybotWhitelisted true", user.RelaybotWhitelisted)
+		mx.log.Debugfln("user.RelaybotWhitelisted true", user.RelaybotWhitelisted)
 		return true
 	}
-	fmt.Println("shouldIgnoreEvent: false")
+	mx.log.Debugfln("shouldIgnoreEvent: false")
 	return false
 }
 
 func (mx *MatrixHandler) HandleEncrypted(evt *event.Event) {
 	if mx.shouldIgnoreEvent(evt) || mx.bridge.Crypto == nil {
-		fmt.Println("HandleEncrypted return 1")
+		mx.log.Debugfln("HandleEncrypted return 1")
 		return
 	}
 
@@ -414,13 +401,9 @@ func (mx *MatrixHandler) HandleMessage(evt *event.Event) {
 			return
 		}
 	}
-	fmt.Println()
-	fmt.Printf("HandleMessage evt.RoomID1: %+v", evt.RoomID)
-	fmt.Println()
+	mx.log.Debugfln("HandleMessage evt.RoomID1: %+v", evt.RoomID)
 	portal := mx.bridge.GetPortalByMXID(evt.RoomID)
-	fmt.Println()
-	fmt.Printf("HandleMessage portal: %+v", portal)
-	fmt.Println()
+	mx.log.Debugfln("HandleMessage portal: %+v", portal)
 	if user.Conn != nil && portal != nil && (user.Whitelisted || portal.HasRelaybot()) {
 		portal.HandleMatrixMessage(user, evt)
 	}

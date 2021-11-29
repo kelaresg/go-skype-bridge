@@ -166,21 +166,15 @@ func (puppet *Puppet) PhoneNumber() string {
 }
 
 func (puppet *Puppet) IntentFor(portal *Portal) *appservice.IntentAPI {
-	fmt.Println()
-	fmt.Printf("puppent IntentFor: %+v", puppet)
-	fmt.Println()
+	puppet.log.Debugln("puppent IntentFor: %+v", puppet)
 	if (!portal.IsPrivateChat() && puppet.customIntent == nil) ||
 		(portal.backfilling && portal.bridge.Config.Bridge.InviteOwnPuppetForBackfilling) ||
 		portal.Key.JID + skypeExt.NewUserSuffix == puppet.JID {
-		fmt.Println()
-		fmt.Println("puppent IntentFor0:", portal.Key.JID, puppet.JID)
-		fmt.Println("puppent IntentFor0:", portal.Key.JID, puppet.JID)
-		fmt.Println()
+		puppet.log.Debugln("puppent IntentFor0:", portal.Key.JID, puppet.JID)
+		puppet.log.Debugln("puppent IntentFor0:", portal.Key.JID, puppet.JID)
 		return puppet.DefaultIntent()
 	}
-	fmt.Println()
-	fmt.Printf("puppent IntentFor2: %+v", puppet.customIntent)
-	fmt.Println()
+	puppet.log.Debugln("puppent IntentFor2: %+v", puppet.customIntent)
 	if portal.IsPrivateChat() && puppet.customIntent == nil{
 		return puppet.DefaultIntent()
 	}
@@ -192,9 +186,7 @@ func (puppet *Puppet) CustomIntent() *appservice.IntentAPI {
 }
 
 func (puppet *Puppet) DefaultIntent() *appservice.IntentAPI {
-	fmt.Println()
-	fmt.Println("DefaultIntent puppet.MXID: ", puppet.MXID)
-	fmt.Println()
+	puppet.log.Debugln("DefaultIntent puppet.MXID: ", puppet.MXID)
 	return puppet.bridge.AS.Intent(puppet.MXID)
 }
 
