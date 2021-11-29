@@ -397,25 +397,40 @@ func (portal *Portal) finishHandlingSkype(source *User, message *skype.Resource,
 	portal.log.Debugln("Handled message", message.Jid, "->", mxid)
 }
 
-func (portal *Portal) SyncParticipants(metadata *skypeExt.GroupInfo) {
+func (portal *Portal) SyncParticipants(user *User, metadata *skypeExt.GroupInfo) {
 	changed := false
-	fmt.Println("SyncParticipants: 0")
+	portal.log.Debugln("SyncParticipants start")
 	levels, err := portal.MainIntent().PowerLevels(portal.MXID)
 	if err != nil {
-		fmt.Println("SyncParticipants: 1")
+		portal.log.Debugfln("SyncParticipants err: %+v", err)
 		levels = portal.GetBasePowerLevels()
 		changed = true
 	}
 	for _, participant := range metadata.Participants {
-		fmt.Println("SyncParticipants: participant.JID= ", participant.JID)
-		user := portal.bridge.GetUserByJID(participant.JID)
+		portal.log.Debugln("SyncParticipants: participant.JID= ", participant.JID)
+
+		// When synchronizing Skype room members, first look up whether there is a corresponding record in the user table. 
+		// If there is, there are two possibilities:
+        // 1. This member is the puppet of the skype account A that you are currently importing, 
+		// and has a corresponding matrix account
+
+        // 2. This member is a puppet of other people's skype account B. 
+		// the other people have registered a matrix account in the same matrix server 
+		// and have also synchronized (bridged) skype account B. skype A and skype B are in the same skype room.
+		participantUser := portal.bridge.GetUserByJID(participant.JID)
+		if participantUser != nil {
+			portal.log.Debugfln("SyncParticipants participantUser.JID: %$, user.JID: %s", participantUser.JID, user.JID)
+			if participantUser.JID != user.JID {
+				continue
+			}
+		}
 		portal.userMXIDAction(user, portal.ensureMXIDInvited)
 
 		puppet := portal.bridge.GetPuppetByJID(participant.JID)
-		fmt.Println("SyncParticipants: portal.MXID = ", portal.MXID)
+		portal.log.Debugln("SyncParticipants: portal.MXID = ", portal.MXID)
 		err := puppet.IntentFor(portal).EnsureJoined(portal.MXID)
 		if err != nil {
-			portal.log.Warnfln("Failed to make puppet of %s join %s: %v", participant.JID, portal.MXID, err)
+			portal.log.Warnfln("Failed to make puppet of %s join %s: %+v", participant.JID, portal.MXID, err)
 		}
 
 		expectedLevel := 0
@@ -425,8 +440,8 @@ func (portal *Portal) SyncParticipants(metadata *skypeExt.GroupInfo) {
 			expectedLevel = 50
 		}
 		changed = levels.EnsureUserLevel(puppet.MXID, expectedLevel) || changed
-		if user != nil {
-			changed = levels.EnsureUserLevel(user.MXID, expectedLevel) || changed
+		if participantUser != nil {
+			changed = levels.EnsureUserLevel(participantUser.MXID, expectedLevel) || changed
 		}
 	}
 	if changed {
@@ -577,7 +592,7 @@ func (portal *Portal) UpdateMetadata(user *User) bool {
 	//	return false
 	//}
 
-	portal.SyncParticipants(metadata)
+	portal.SyncParticipants(user, metadata)
 	update := false
 	update = portal.UpdateName(portalName, metadata.NameSetBy) || update
 	// update = portal.UpdateTopic(metadata.Topic, metadata.TopicSetBy) || update
@@ -599,6 +614,7 @@ func (portal *Portal) userMXIDAction(user *User, fn func(mxid id.UserID)) {
 }
 
 func (portal *Portal) ensureMXIDInvited(mxid id.UserID) {
+	portal.log.Debugfln("ensureMXIDInvited portal.MXID %s: %s", portal.MXID, mxid);
 	err := portal.MainIntent().EnsureInvited(portal.MXID, mxid)
 	if err != nil {
 		portal.log.Warnfln("Failed to ensure %s is invited to %s: %v", mxid, portal.MXID, err)
@@ -628,7 +644,7 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 			portal.Name = chat.ThreadProperties.Topic
 		}
 		//todo
-		fmt.Println("SyncSkype portal.MXID", portal.MXID)
+		portal.log.Debugln("SyncSkype portal.MXID", portal.MXID)
 		err := portal.CreateMatrixRoom(user)
 		if err != nil {
 			portal.log.Errorln("Failed to create portal room:", err)
@@ -636,7 +652,7 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 		}
 		newPortal = true
 	} else {
-		fmt.Println("SyncSkype ensureUserInvited", portal.MXID)
+		portal.log.Debugln("SyncSkype ensureUserInvited", portal.MXID)
 		portal.ensureUserInvited(user)
 		//rep, err := portal.MainIntent().SetPowerLevel(portal.MXID, user.MXID, 95)
 		//if err != nil {
@@ -660,7 +676,7 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 		return
 	}
 
-	fmt.Println("SyncSkype portal")
+	portal.log.Debugln("SyncSkype portal")
 
 	update := false
 	if !newPortal {
@@ -671,7 +687,7 @@ func (portal *Portal) SyncSkype(user *User, chat skype.Conversation) {
 	// update = portal.UpdateAvatar(user, nil) || update
 	// }
 	if update {
-		fmt.Println("SyncSkype portal.Update", portal.MXID)
+		portal.log.Debugln("SyncSkype portal.Update", portal.MXID)
 		portal.Update()
 	}
 }
@@ -1237,7 +1253,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 	}
 
 	if metadata != nil {
-		portal.SyncParticipants(metadata)
+		portal.SyncParticipants(user, metadata)
 	} else {
 		fmt.Println("GetPuppetByCustomMXID: ", user.MXID)
 		customPuppet := portal.bridge.GetPuppetByCustomMXID(user.MXID)
