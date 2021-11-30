@@ -1682,23 +1682,6 @@ func (portal *Portal) HandleMediaMessageSkype(source *User, download func(conn *
 
 	// synapse doesn't handle webp well, so we convert it. This can be dropped once https://github.com/matrix-org/synapse/issues/4382 is fixed
 	mimeType := mimetype.Detect(data).String()
-	if mimeType == "image/webp" {
-		img, err := decodeWebp(bytes.NewReader(data))
-		if err != nil {
-			portal.log.Errorfln("Failed to decode media for %s: %v", err)
-			return
-		}
-
-		var buf bytes.Buffer
-		err = png.Encode(&buf, img)
-		if err != nil {
-			portal.log.Errorfln("Failed to convert media for %s: %v", err)
-			return
-		}
-		data = buf.Bytes()
-		mimeType = "image/png"
-	}
-
 	var width, height int
 	if strings.HasPrefix(mimeType, "image/") {
 		cfg, _, _ := image.DecodeConfig(bytes.NewReader(data))
