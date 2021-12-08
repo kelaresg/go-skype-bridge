@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 	"html"
 	"regexp"
 	"strings"
+
+	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/format"
@@ -40,7 +41,7 @@ func NewFormatter(bridge *Bridge) *Formatter {
 			TabsToSpaces: 4,
 			Newline:      "\n",
 
-			PillConverter: func(mxid, eventID string, ctx format.Context) string {
+			PillConverter: func(displayname, mxid, eventID string, ctx format.Context) string {
 				if mxid[0] == '@' {
 					puppet := bridge.GetPuppetByMXID(id.UserID(mxid))
 					if puppet != nil {

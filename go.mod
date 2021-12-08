@@ -9,10 +9,10 @@ require (
 	github.com/lib/pq v1.9.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/maulogger/v2 v2.2.4
-	maunium.net/go/mautrix v0.8.0-rc.4
+	maunium.net/go/maulogger/v2 v2.3.1
+	maunium.net/go/mautrix v0.10.3
 )
 
-replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.9.11-0.20210508035357-93e21d8c2bbe
+replace maunium.net/go/mautrix => github.com/pidongqianqian/mautrix-go v0.10.4-0.20211208080648-321c4f849adb

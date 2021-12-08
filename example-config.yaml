@@ -172,7 +172,7 @@ bridge:
 
         puppet_id:
             # when set to true, the matrixid of the contact (puppet) from the bridge to the matrix will be encrypted into another string
-            default: false
+            allow: false
             # 8 characters
             key: '12dsf323'
             # Use the username_template prefix. (Warning: At present, username_template cannot be too complicated, otherwise this function may cause unknown errors)
