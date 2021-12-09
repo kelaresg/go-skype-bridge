@@ -2,10 +2,11 @@ package config
 
 import (
 	"bytes"
-	skype "github.com/kelaresg/go-skypeapi"
 	"strconv"
 	"strings"
 	"text/template"
+
+	skype "github.com/kelaresg/go-skypeapi"
 
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
@@ -41,10 +42,13 @@ type BridgeConfig struct {
 	SyncChatMaxAge       uint64 `yaml:"sync_max_chat_age"`
 
 	SyncWithCustomPuppets bool   `yaml:"sync_with_custom_puppets"`
-	LoginSharedSecret     string `yaml:"login_shared_secret"`
 
 	InviteOwnPuppetForBackfilling bool `yaml:"invite_own_puppet_for_backfilling"`
 	PrivateChatPortalMeta         bool `yaml:"private_chat_portal_meta"`
+
+	DoublePuppetServerMap      map[string]string `yaml:"double_puppet_server_map"`
+	DoublePuppetAllowDiscovery bool              `yaml:"double_puppet_allow_discovery"`
+	LoginSharedSecretMap       map[string]string `yaml:"login_shared_secret_map"`
 
 	WhatsappThumbnail bool `yaml:"whatsapp_thumbnail"`
 
@@ -99,7 +103,6 @@ func (bc *BridgeConfig) setDefaults() {
 	bc.SyncChatMaxAge = 259200
 
 	bc.SyncWithCustomPuppets = true
-	bc.LoginSharedSecret = ""
 
 	bc.InviteOwnPuppetForBackfilling = true
 	bc.PrivateChatPortalMeta = false

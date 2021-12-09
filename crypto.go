@@ -11,18 +11,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//go:build cgo && !nocrypto
 // +build cgo,!nocrypto
 
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
 	"fmt"
+	"runtime/debug"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/lib/pq"
+
 	"maunium.net/go/maulogger/v2"
 
 	"maunium.net/go/mautrix"
@@ -48,12 +48,13 @@ type CryptoHelper struct {
 	baseLog maulogger.Logger
 }
 
+func init() {
+	crypto.PostgresArrayWrapper = pq.Array
+}
+
 func NewCryptoHelper(bridge *Bridge) Crypto {
 	if !bridge.Config.Bridge.Encryption.Allow {
 		bridge.Log.Debugln("Bridge built with end-to-bridge encryption, but disabled in config")
-		return nil
-	} else if bridge.Config.Bridge.LoginSharedSecret == "" {
-		bridge.Log.Warnln("End-to-bridge encryption enabled, but login_shared_secret not set")
 		return nil
 	}
 	baseLog := bridge.Log.Sub("Crypto")
@@ -101,7 +102,8 @@ func (helper *CryptoHelper) allowKeyShare(device *crypto.DeviceIdentity, info ev
 			return &crypto.KeyShareRejection{Code: event.RoomKeyWithheldUnavailable, Reason: "Requested room is not a portal room"}
 		}
 		user := helper.bridge.GetUserByMXID(device.UserID)
-		if !user.IsInPortal(portal.Key) {
+		// FIXME reimplement IsInPortal
+		if !user.Admin /*&& !user.IsInPortal(portal.Key)*/ {
 			helper.log.Debugfln("Rejecting key request for %s from %s/%s: user is not in portal", info.SessionID, device.UserID, device.DeviceID)
 			return &crypto.KeyShareRejection{Code: event.RoomKeyWithheldUnauthorized, Reason: "You're not in that portal"}
 		}
@@ -128,14 +130,15 @@ func (helper *CryptoHelper) loginBot() (*mautrix.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get supported login flows: %w", err)
 	}
-	if !flows.HasFlow(mautrix.AuthTypeHalfyAppservice) {
+	flow := flows.FirstFlowOfType(mautrix.AuthTypeAppservice, mautrix.AuthTypeHalfyAppservice)
+	if flow == nil {
 		return nil, fmt.Errorf("homeserver does not support appservice login")
 	}
 	// We set the API token to the AS token here to authenticate the appservice login
 	// It'll get overridden after the login
 	client.AccessToken = helper.bridge.AS.Registration.AppToken
 	resp, err := client.Login(&mautrix.ReqLogin{
-		Type:                     mautrix.AuthTypeHalfyAppservice,
+		Type:                     flow.Type,
 		Identifier:               mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: string(helper.bridge.AS.BotMXID())},
 		DeviceID:                 deviceID,
 		InitialDeviceDisplayName: "Skype Bridge",
@@ -144,37 +147,7 @@ func (helper *CryptoHelper) loginBot() (*mautrix.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to log in as bridge bot: %w", err)
 	}
-	if len(deviceID) == 0 {
-		helper.store.DeviceID = resp.DeviceID
-	}
-	return client, nil
-}
-
-func (helper *CryptoHelper) loginBotOld() (*mautrix.Client, error) {
-	deviceID := helper.store.FindDeviceID()
-	if len(deviceID) > 0 {
-		helper.log.Debugln("Found existing device ID for bot in database:", deviceID)
-	}
-	mac := hmac.New(sha512.New, []byte(helper.bridge.Config.Bridge.LoginSharedSecret))
-	mac.Write([]byte(helper.bridge.AS.BotMXID()))
-	client, err := mautrix.NewClient(helper.bridge.AS.HomeserverURL, "", "")
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Login(&mautrix.ReqLogin{
-		Type:                     mautrix.AuthTypePassword,
-		Identifier:               mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: string(helper.bridge.AS.BotMXID())},
-		Password:                 hex.EncodeToString(mac.Sum(nil)),
-		DeviceID:                 deviceID,
-		InitialDeviceDisplayName: "Skype Bridge",
-		StoreCredentials:         true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(deviceID) == 0 {
-		helper.store.DeviceID = resp.DeviceID
-	}
+	helper.store.DeviceID = resp.DeviceID
 	return client, nil
 }
 
@@ -203,15 +176,15 @@ func (helper *CryptoHelper) Encrypt(roomID id.RoomID, evtType event.Type, conten
 		helper.log.Debugfln("Got %v while encrypting event for %s, sharing group session and trying again...", err, roomID)
 		users, err := helper.store.GetRoomMembers(roomID)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get room member list")
+			return nil, fmt.Errorf("failed to get room member list: %w", err)
 		}
 		err = helper.mach.ShareGroupSession(roomID, users)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to share group session")
+			return nil, fmt.Errorf("failed to share group session: %w", err)
 		}
 		encrypted, err = helper.mach.EncryptMegolmEvent(roomID, evtType, &content)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to encrypt event after re-sharing group session")
+			return nil, fmt.Errorf("failed to encrypt event after re-sharing group session: %w", err)
 		}
 	}
 	return encrypted, nil
@@ -226,7 +199,23 @@ type cryptoSyncer struct {
 }
 
 func (syncer *cryptoSyncer) ProcessResponse(resp *mautrix.RespSync, since string) error {
-	syncer.ProcessSyncResponse(resp, since)
+	done := make(chan struct{})
+	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				syncer.Log.Error("Processing sync response (%s) panicked: %v\n%s", since, err, debug.Stack())
+			}
+			done <- struct{}{}
+		}()
+		syncer.Log.Trace("Starting sync response handling (%s)", since)
+		syncer.ProcessSyncResponse(resp, since)
+		syncer.Log.Trace("Successfully handled sync response (%s)", since)
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		syncer.Log.Warn("Handling sync response (%s) is taking unusually long", since)
+	}
 	return nil
 }
 

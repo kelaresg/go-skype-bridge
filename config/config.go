@@ -18,6 +18,8 @@ package config
 
 import (
 	"io/ioutil"
+
+	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/patch"
 
 	"gopkg.in/yaml.v2"
@@ -66,6 +68,12 @@ type Config struct {
 	Bridge BridgeConfig `yaml:"bridge"`
 
 	Logging appservice.LogConfig `yaml:"logging"`
+}
+
+func (config *Config) CanAutoDoublePuppet(userID id.UserID) bool {
+	_, homeserver, _ := userID.Parse()
+	_, hasSecret := config.Bridge.LoginSharedSecretMap[homeserver]
+	return hasSecret
 }
 
 func (config *Config) setDefaults() {

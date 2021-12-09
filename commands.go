@@ -262,6 +262,13 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		Contacts: make(map[string]skype.Contact),
 		Chats:    make(map[string]skype.Conversation),
 	}
+	puppet := handler.bridge.GetPuppetByJID(ce.User.JID)
+	if puppet.CustomMXID != "" {
+		err := puppet.SwitchCustomMXID("", "")
+		if err != nil {
+			ce.User.log.Warnln("Failed to logout-matrix while logging out of WhatsApp:", err)
+		}
+	}
 	ce.Reply("Logged out successfully.")
 	if ce.User.Conn.Refresh != nil {
 		ce.User.Conn.Refresh <- -1

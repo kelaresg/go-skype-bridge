@@ -6,6 +6,7 @@ import (
 	skypeExt "github.com/kelaresg/matrix-skype/skype-ext"
 	"net/http"
 	"regexp"
+	"sync"
 	"strings"
 
 	log "maunium.net/go/maulogger/v2"
@@ -159,6 +160,8 @@ type Puppet struct {
 	customIntent   *appservice.IntentAPI
 	customTypingIn map[id.RoomID]bool
 	customUser     *User
+
+	syncLock sync.Mutex
 }
 
 func (puppet *Puppet) PhoneNumber() string {

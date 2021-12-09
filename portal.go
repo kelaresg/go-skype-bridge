@@ -346,8 +346,9 @@ func (portal *Portal) getMessageIntentSkype(user *User, info skype.Resource) *ap
 	return portal.bridge.GetPuppetByJID(info.SendId + skypeExt.NewUserSuffix).IntentFor(portal)
 }
 
-func (portal *Portal) handlePrivateChatFromMe(fromMe bool) func() {
-	if portal.IsPrivateChat() && fromMe && len(portal.bridge.Config.Bridge.LoginSharedSecret) == 0 {
+func (portal *Portal) handlePrivateChatFromMe(user *User, fromMe bool) func() {
+	_, homeserver, _ := user.MXID.Parse()
+	if portal.IsPrivateChat() && fromMe && len(portal.bridge.Config.Bridge.LoginSharedSecretMap[homeserver]) == 0 {
 		var privateChatPuppet *Puppet
 		var privateChatPuppetInvited bool
 		privateChatPuppet = portal.bridge.GetPuppetByJID(portal.Key.Receiver)
@@ -378,10 +379,9 @@ func (portal *Portal) startHandlingSkype(source *User, info skype.Resource) (*ap
 	} else {
 		portal.log.Debugfln("Starting handling of %s (ts: %d)", info.Id, info.Timestamp)
 		portal.lastMessageTs = uint64(info.Timestamp)
-		return portal.getMessageIntentSkype(source, info), portal.handlePrivateChatFromMe(info.GetFromMe(source.Conn.Conn))
+		return portal.getMessageIntentSkype(source, info), portal.handlePrivateChatFromMe(source, info.GetFromMe(source.Conn.Conn))
 	}
-	fmt.Println()
-	fmt.Printf("portal startHandling: %+v", "but nil")
+	portal.log.Debugfln("startHandlingSkype: %+v", "but nil")
 	return nil, nil
 }
 
@@ -945,7 +945,8 @@ func (portal *Portal) beginBackfill() func() {
 		portal.privateChatBackfillInvitePuppet = nil
 		portal.backfillLock.Unlock()
 		if privateChatPuppet != nil && privateChatPuppetInvited {
-			if len(portal.bridge.Config.Bridge.LoginSharedSecret) > 0 {
+			_, homeserver, _ := privateChatPuppet.MXID.Parse()
+			if len(portal.bridge.Config.Bridge.LoginSharedSecretMap[homeserver]) > 0 {
 				_, _ = privateChatPuppet.DefaultIntent().LeaveRoom(portal.MXID)
 			}
 		}
@@ -1512,7 +1513,7 @@ func (portal *Portal) trySendMessage(intent *appservice.IntentAPI, eventType eve
 	resp, err = portal.sendMessage(intent, eventType, content, message.Timestamp*1000)
 	if err != nil {
 		portal.log.Errorfln("Failed to handle message %s: %v", message.Id, err)
-		if strings.Index(err.Error(), "M_UNKNOWN_TOKEN (HTTP 401)") > -1 {
+		if errors.Is(err, mautrix.MUnknownToken) {
 			puppet := source.bridge.GetPuppetByJID(source.JID)
 			err, accessToken := source.UpdateAccessToken(puppet)
 			if err == nil && accessToken != "" {

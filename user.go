@@ -445,34 +445,32 @@ func (user *User) PostLogin() {
 }
 
 func (user *User) tryAutomaticDoublePuppeting() {
-	fmt.Println("tryAutomaticDoublePuppeting")
-	if len(user.bridge.Config.Bridge.LoginSharedSecret) == 0 {
-		fmt.Println("tryAutomaticDoublePuppeting-1", user.bridge.Config.Bridge.LoginSharedSecret)
-		// Automatic login not enabled
-		return
-	} else if _, homeserver, _ := user.MXID.Parse(); homeserver != user.bridge.Config.Homeserver.Domain {
-		fmt.Println("tryAutomaticDoublePuppeting-2", user.MXID)
-		fmt.Println("tryAutomaticDoublePuppeting-21", homeserver)
-		fmt.Println("tryAutomaticDoublePuppeting--3", user.bridge.Config.Homeserver.Domain)
-		// user is on another homeserver
+	if !user.bridge.Config.CanAutoDoublePuppet(user.MXID) {
 		return
 	}
-	fmt.Println("tryAutomaticDoublePuppeting1")
+	user.log.Debugln("Checking if double puppeting needs to be enabled")
 	puppet := user.bridge.GetPuppetByJID(user.JID)
 	if len(puppet.CustomMXID) > 0 {
+		user.log.Debugln("User already has double-puppeting enabled")
 		// Custom puppet already enabled
 		return
 	}
-	fmt.Println("tryAutomaticDoublePuppeting2", user.MXID)
-	_, _ = user.UpdateAccessToken(puppet)
+	accessToken, err := puppet.loginWithSharedSecret(user.MXID)
+	if err != nil {
+		user.log.Warnln("Failed to login with shared secret:", err)
+		return
+	}
+	err = puppet.SwitchCustomMXID(accessToken, user.MXID)
+	if err != nil {
+		puppet.log.Warnln("Failed to switch to auto-logined custom puppet:", err)
+		return
+	}
+	user.log.Infoln("Successfully automatically enabled custom puppet")
 }
 
 func (user *User) UpdateAccessToken(puppet *Puppet) (err error, accessToken string) {
-	if len(user.bridge.Config.Bridge.LoginSharedSecret) == 0 {
-		return errors.New("you didn't set LoginSharedSecret"), ""
-	} else if _, homeserver, _ := user.MXID.Parse(); homeserver != user.bridge.Config.Homeserver.Domain {
-		// user is on another homeserver
-		return errors.New("user is on another homeServer"), ""
+	if !puppet.bridge.Config.CanAutoDoublePuppet(user.MXID) {
+		return errors.New("you didn't set LoginSharedSecret or user is on another homeServer"), ""
 	}
 	accessToken, err = puppet.loginWithSharedSecret(user.MXID)
 	if err != nil {

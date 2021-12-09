@@ -129,12 +129,19 @@ bridge:
     # Whether or not to sync with custom puppets to receive EDUs that
     # are not normally sent to appservices.
     sync_with_custom_puppets: true
+
+    # Servers to always allow double puppeting from
+    double_puppet_server_map:
+        example.com: https://example.com
+    # Allow using double puppeting from any server with a valid client .well-known file.
+    double_puppet_allow_discovery: false
     # Shared secret for https://github.com/devture/matrix-synapse-shared-secret-auth
     #
     # If set, custom puppets will be enabled automatically for local users
     # instead of users having to find an access token and run `login-matrix`
     # manually.
-    login_shared_secret: null
+    login_shared_secret_map:
+        example.com: foobar
 
     # Whether or not to invite own Skype user's Matrix puppet into private
     # chat portals when backfilling if needed.
