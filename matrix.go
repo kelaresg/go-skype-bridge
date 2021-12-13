@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	skype "github.com/kelaresg/go-skypeapi"
 	"github.com/kelaresg/matrix-skype/database"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/patch"
-	"strconv"
-	"strings"
-	"time"
 
 	"maunium.net/go/maulogger/v2"
 
@@ -351,8 +352,7 @@ func (mx *MatrixHandler) HandleRoomMetadata(evt *event.Event) {
 
 func (mx *MatrixHandler) shouldIgnoreEvent(evt *event.Event) bool {
 	if _, isPuppet := mx.bridge.ParsePuppetMXID(evt.Sender); evt.Sender == mx.bridge.Bot.UserID || isPuppet {
-		mx.log.Debugfln("shouldIgnoreEvent: isPuppet%+v", isPuppet)
-		mx.log.Debugfln("shouldIgnoreEvent: isPuppet%+v", evt.Sender)
+		mx.log.Debugfln("shouldIgnoreEvent: isPuppet=%+v, evt.Sender=%+v", isPuppet, evt.Sender)
 		return true
 	}
 	isCustomPuppet, ok := evt.Content.Raw["net.maunium.skype.puppet"].(bool)

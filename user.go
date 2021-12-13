@@ -638,81 +638,16 @@ func (user *User) HandleError(err error) {
 	// Otherwise unknown error, probably mostly harmless
 }
 
-func (user *User) tryReconnect(msg string) {
-	//if user.ConnectionErrors > user.bridge.Config.Bridge.MaxConnectionAttempts {
-	//	content := format.RenderMarkdown(fmt.Sprintf("%s. Use the `reconnect` command to reconnect.", msg), true, false)
-	//	_, _ = user.bridge.Bot.SendMessageEvent(user.GetManagementRoom(), event.EventMessage, content)
-	//	return
-	//}
-	//if user.bridge.Config.Bridge.ReportConnectionRetry {
-	//	_, _ = user.bridge.Bot.SendNotice(user.GetManagementRoom(), fmt.Sprintf("%s. Reconnecting...", msg))
-	//	// Don't want the same error to be repeated
-	//	msg = ""
-	//}
-	//var tries uint
-	//var exponentialBackoff bool
-	//baseDelay := time.Duration(user.bridge.Config.Bridge.ConnectionRetryDelay)
-	//if baseDelay < 0 {
-	//	exponentialBackoff = true
-	//	baseDelay = -baseDelay + 1
-	//}
-	//delay := baseDelay
-	//for user.ConnectionErrors <= user.bridge.Config.Bridge.MaxConnectionAttempts {
-	//	err := user.Conn.Restore()
-	//	if err == nil {
-	//		user.ConnectionErrors = 0
-	//		if user.bridge.Config.Bridge.ReportConnectionRetry {
-	//			_, _ = user.bridge.Bot.SendNotice(user.GetManagementRoom(), "Reconnected successfully")
-	//		}
-	//		user.PostLogin()
-	//		return
-	//	} else if err.Error() == "init responded with 400" {
-	//		user.log.Infoln("Got init 400 error when trying to reconnect, resetting connection...")
-	//		sess, err := user.Conn.Disconnect()
-	//		if err != nil {
-	//			user.log.Debugln("Error while disconnecting for connection reset:", err)
-	//		}
-	//		if len(sess.Wid) > 0 {
-	//			user.SetSession(&sess)
-	//		}
-	//	}
-	//	user.log.Errorln("Error while trying to reconnect after disconnection:", err)
-	//	tries++
-	//	user.ConnectionErrors++
-	//	if user.ConnectionErrors <= user.bridge.Config.Bridge.MaxConnectionAttempts {
-	//		if exponentialBackoff {
-	//			delay = (1 << tries) + baseDelay
-	//		}
-	//		if user.bridge.Config.Bridge.ReportConnectionRetry {
-	//			_, _ = user.bridge.Bot.SendNotice(user.GetManagementRoom(),
-	//				fmt.Sprintf("Reconnection attempt failed: %v. Retrying in %d seconds...", err, delay))
-	//		}
-	//		time.Sleep(delay * time.Second)
-	//	}
-	//}
-	//
-	//if user.bridge.Config.Bridge.ReportConnectionRetry {
-	//	msg = fmt.Sprintf("%d reconnection attempts failed. Use the `reconnect` command to try to reconnect manually.", tries)
-	//} else {
-	//	msg = fmt.Sprintf("\u26a0 %sAdditionally, %d reconnection attempts failed. "+
-	//		"Use the `reconnect` command to try to reconnect.", msg, tries)
-	//}
-	//
-	//content := format.RenderMarkdown(msg, true, false)
-	//_, _ = user.bridge.Bot.SendMessageEvent(user.GetManagementRoom(), event.EventMessage, content)
-}
-
 func (user *User) ShouldCallSynchronously() bool {
 	return true
 }
 
 func (user *User) HandleJSONParseError(err error) {
-	user.log.Errorln("WhatsApp JSON parse error:", err)
+	user.log.Errorln("Skype JSON parse error:", err)
 }
 
 func (user *User) PortalKey(jid types.SkypeID) database.PortalKey {
-	fmt.Println("User PortalKey jid: ", jid)
-	fmt.Println("User PortalKey  user.JID: ", user.JID)
+	user.log.Debugfln("PortalKey: jid=%s, user.JID=", jid, user.JID)
 	return database.NewPortalKey(jid, user.JID)
 }
 
@@ -723,7 +658,6 @@ func (user *User) GetPortalByJID(jid types.SkypeID) *Portal {
 func (user *User) handleMessageLoop() {
 	for msg := range user.messages {
 		user.syncLock.Lock()
-		fmt.Println("User handleMessageLoop msg.chat: ", msg.chat)
 		user.GetPortalByJID(msg.chat).messages <- msg
 		user.syncLock.Unlock()
 	}
@@ -782,41 +716,6 @@ type FakeMessage struct {
 	ID    string
 	Alert bool
 }
-
-//func (user *User) HandleCallInfo(info whatsappExt.CallInfo) {
-//	if info.Data != nil {
-//		return
-//	}
-//	data := FakeMessage{
-//		ID: info.ID,
-//	}
-//	switch info.Type {
-//	case whatsappExt.CallOffer:
-//		if !user.bridge.Config.Bridge.CallNotices.Start {
-//			return
-//		}
-//		data.Text = "Incoming call"
-//		data.Alert = true
-//	case whatsappExt.CallOfferVideo:
-//		if !user.bridge.Config.Bridge.CallNotices.Start {
-//			return
-//		}
-//		data.Text = "Incoming video call"
-//		data.Alert = true
-//	case whatsappExt.CallTerminate:
-//		if !user.bridge.Config.Bridge.CallNotices.End {
-//			return
-//		}
-//		data.Text = "Call ended"
-//		data.ID += "E"
-//	default:
-//		return
-//	}
-//	portal := user.GetPortalByJID(info.From)
-//	if portal != nil {
-//		portal.messages <- PortalMessage{info.From, user, data, 0}
-//	}
-//}
 
 func (user *User) HandleTypingStatus(info skype.Resource) {
 	sendId := info.SendId + skypeExt.NewUserSuffix
@@ -889,58 +788,6 @@ func (user *User) HandlePresence(info skype.Resource) {
 	}
 }
 
-//func (user *User) HandlePresenceWA(info whatsappExt.Presence) {
-//	puppet := user.bridge.GetPuppetByJID(info.SenderJID)
-//	switch info.Status {
-//	case whatsapp.PresenceUnavailable:
-//		_ = puppet.DefaultIntent().SetPresence("offline")
-//	case whatsapp.PresenceAvailable:
-//		if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
-//			portal := user.bridge.GetPortalByMXID(puppet.typingIn)
-//			_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
-//			puppet.typingIn = ""
-//			puppet.typingAt = 0
-//		}
-//		_ = puppet.DefaultIntent().SetPresence("online")
-//	case whatsapp.PresenceComposing:
-//		portal := user.GetPortalByJID(info.JID)
-//		if len(puppet.typingIn) > 0 && puppet.typingAt+15 > time.Now().Unix() {
-//			if puppet.typingIn == portal.MXID {
-//				return
-//			}
-//			_, _ = puppet.IntentFor(portal).UserTyping(puppet.typingIn, false, 0)
-//		}
-//		puppet.typingIn = portal.MXID
-//		puppet.typingAt = time.Now().Unix()
-//		_, _ = puppet.IntentFor(portal).UserTyping(portal.MXID, true, 15*1000)
-//		_ = puppet.DefaultIntent().SetPresence("online")
-//	}
-//}
-
-//func (user *User) HandleMsgInfo(info whatsappExt.MsgInfo) {
-//	if (info.Command == whatsappExt.MsgInfoCommandAck || info.Command == whatsappExt.MsgInfoCommandAcks) && info.Acknowledgement == whatsappExt.AckMessageRead {
-//		portal := user.GetPortalByJID(info.ToJID)
-//		if len(portal.MXID) == 0 {
-//			return
-//		}
-//
-//		go func() {
-//			intent := user.bridge.GetPuppetByJID(info.SenderJID).IntentFor(portal)
-//			for _, id := range info.IDs {
-//				msg := user.bridge.DB.Message.GetByJID(portal.Key, id)
-//				if msg == nil {
-//					continue
-//				}
-//
-//				err := intent.MarkRead(portal.MXID, msg.MXID)
-//				if err != nil {
-//					user.log.Warnln("Failed to mark message %s as read by %s: %v", msg.MXID, info.SenderJID, err)
-//				}
-//			}
-//		}()
-//	}
-//}
-
 func (user *User) HandleCommand(cmd skypeExt.Command) {
 	switch cmd.Type {
 	case skypeExt.CommandPicture:
@@ -968,29 +815,14 @@ func (user *User) HandleCommand(cmd skypeExt.Command) {
 }
 
 func (user *User) HandleChatUpdate(cmd skype.Resource) {
-	fmt.Println()
-	fmt.Println("HandleChatUpdate :")
-	fmt.Println()
-	//if cmd.Command != skypeExt.ChatUpdateCommandAction {
-	//	return
-	//}
+	user.log.Debugfln("HandleChatUpdate: jid=%s, user.jid=%s", cmd.Jid, user.JID)
 
 	portal := user.GetPortalByJID(cmd.Jid)
-	//if len(portal.MXID) == 0 {
-	//	if cmd.Data.Action == skypeExt.ChatActionCreate {
-	//		go portal.membershipCreate(user, cmd)
-	//	}
-	//	return
-	//}
-
-	fmt.Println("portl:", portal)
-	fmt.Println("cmd.MessageType:", cmd.MessageType)
 	messageType := skypeExt.ChatActionType(cmd.MessageType)
 
 	switch messageType {
 	case skypeExt.ChatTopicUpdate:
 		topicContent := skype.ChatTopicContent{}
-		//把xml数据解析成bs对象
 		xml.Unmarshal([]byte(cmd.Content), &topicContent)
 		portalName := ""
 		noRoomTopic := false
@@ -1024,7 +856,6 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 		go portal.UpdateName(portalName, cmd.SendId)
 	case skypeExt.ChatPictureUpdate:
 		topicContent := skype.ChatPictureContent{}
-		//把xml数据解析成bs对象
 		xml.Unmarshal([]byte(cmd.Content), &topicContent)
 		cmd.SendId = topicContent.Initiator + skypeExt.NewUserSuffix
 		url := strings.TrimPrefix(topicContent.Value, "URL@")
@@ -1033,9 +864,6 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 		} else {
 			url = url + "/views/swx_avatar"
 		}
-		fmt.Println()
-		fmt.Println("HandleChatUpdateL picture:", url)
-		fmt.Println()
 		avatar := &skypeExt.ProfilePicInfo{
 			URL:    url,
 			Tag:    url,
@@ -1060,64 +888,8 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 				portal.Cleanup(false)
 			}
 		}
-
-		//case skypeExt.ChatActionAddTopic:
-		//	go portal.UpdateTopic(cmd.Data.AddTopic.Topic, cmd.Data.SenderJID)
-		//case skypeExt.ChatActionRemoveTopic:
-		//	go portal.UpdateTopic("", cmd.Data.SenderJID)
-		//case skypeExt.ChatActionPromote:
-		//	go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, true)
-		//case skypeExt.ChatActionDemote:
-		//	go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, false)
-		//case skypeExt.ChatActionAnnounce:
-		//	go portal.RestrictMessageSending(cmd.Data.Announce)
-		//case skypeExt.ChatActionRestrict:
-		//	go portal.RestrictMetadataChanges(cmd.Data.Restrict)
-		//case skypeExt.ChatActionAdd:
-		//	go portal.membershipAdd(user, cmd.Jid)
-		//case skypeExt.ChatActionRemove:
-		//	go portal.membershipRemove(cmd.Data.MemberAction.JIDs, cmd.Data.Action)
-		//case skypeExt.ChatActionIntroduce:
-		//	go portal.membershipAdd(user, cmd.JID)
 	}
 }
-
-//func (user *User) HandleChatUpdate(cmd whatsappExt.ChatUpdate) {
-//	if cmd.Command != whatsappExt.ChatUpdateCommandAction {
-//		return
-//	}
-//
-//	portal := user.GetPortalByJID(cmd.JID)
-//	if len(portal.MXID) == 0 {
-//		if cmd.Data.Action == whatsappExt.ChatActionCreate {
-//			go portal.membershipCreate(user, cmd)
-//		}
-//		return
-//	}
-//
-//	switch cmd.Data.Action {
-//	case whatsappExt.ChatActionNameChange:
-//		go portal.UpdateName(cmd.Data.NameChange.Name, cmd.Data.SenderJID)
-//	case whatsappExt.ChatActionAddTopic:
-//		go portal.UpdateTopic(cmd.Data.AddTopic.Topic, cmd.Data.SenderJID)
-//	case whatsappExt.ChatActionRemoveTopic:
-//		go portal.UpdateTopic("", cmd.Data.SenderJID)
-//	case whatsappExt.ChatActionPromote:
-//		go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, true)
-//	case whatsappExt.ChatActionDemote:
-//		go portal.ChangeAdminStatus(cmd.Data.PermissionChange.JIDs, false)
-//	case whatsappExt.ChatActionAnnounce:
-//		go portal.RestrictMessageSending(cmd.Data.Announce)
-//	case whatsappExt.ChatActionRestrict:
-//		go portal.RestrictMetadataChanges(cmd.Data.Restrict)
-//	case whatsappExt.ChatActionAdd:
-//		go portal.membershipAdd(user, cmd.JID)
-//	case whatsappExt.ChatActionRemove:
-//		go portal.membershipRemove(cmd.Data.MemberAction.JIDs, cmd.Data.Action)
-//	case whatsappExt.ChatActionIntroduce:
-//		go portal.membershipAdd(user, cmd.JID)
-//	}
-//}
 
 func (user *User) HandleJsonMessage(message string) {
 	var msg json.RawMessage
@@ -1128,10 +900,6 @@ func (user *User) HandleJsonMessage(message string) {
 	user.log.Debugln("JSON message:", message)
 	user.updateLastConnectionIfNecessary()
 }
-
-//func (user *User) HandleRawMessage(message *waProto.WebMessageInfo) {
-//	user.updateLastConnectionIfNecessary()
-//}
 
 func (user *User) NeedsRelaybot(portal *Portal) bool {
 	return false
