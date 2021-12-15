@@ -57,6 +57,7 @@ type User struct {
 	mgmtCreateLock sync.Mutex
 
 	contactsPresence map[string]*skypeExt.Presence
+	currentCreateRoomName string
 }
 
 func (bridge *Bridge) GetUserByMXID(userID id.UserID) *User {
@@ -873,9 +874,10 @@ func (user *User) HandleChatUpdate(cmd skype.Resource) {
 	case skypeExt.ChatMemberAdd:
 		user.log.Debugfln("chat member add")
 		if len(portal.MXID) == 0 {
+			user.log.Debugfln("seems no room for chat member add, start create a new matrix room")
 			err := portal.CreateMatrixRoom(user)
 			if err != nil {
-				fmt.Println("create room failed")
+				user.log.Debugln(err.Error())
 			}
 		}
 		go portal.membershipAdd(cmd.Content)

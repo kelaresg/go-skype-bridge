@@ -1072,6 +1072,7 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 		HistoryDisclosed: "true",
 		Topic:            roomNameEvent.Name,
 	}
+	ce.User.currentCreateRoomName = roomNameEvent.Name
 	handler.log.Debugln("Create Group", roomNameEvent.Name, "with", selfMembers, participants)
 	err = ce.User.Conn.HandleGroupCreate(selfMembers)
 	if err != nil {
@@ -1087,6 +1088,7 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 		})
 	}
 	conversationId, ok := <-ce.User.Conn.CreateChan
+	handler.log.Debugln("Create Group: conversationId=", conversationId)
 	if ok {
 		portal := handler.bridge.GetPortalByJID(database.GroupPortalKey(conversationId))
 		portal.roomCreateLock.Lock()
@@ -1105,9 +1107,11 @@ func (handler *CommandHandler) CommandCreate(ce *CommandEvent) {
 			}
 			portal.Encrypted = true
 		}
-
+		handler.log.Debugln("Create Group: before update protal")
 		portal.Update()
 		portal.UpdateBridgeInfo()
+		ce.User.currentCreateRoomName = ""
+		handler.log.Debugln("Create Group: after update protal")
 
 		err = ce.User.Conn.AddMember(participantMembers, conversationId)
 		ce.Reply("Successfully created Skype group %s", portal.Key.JID)

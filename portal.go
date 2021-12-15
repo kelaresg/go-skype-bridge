@@ -1101,10 +1101,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 	if err := intent.EnsureRegistered(); err != nil {
 		return err
 	}
-
-	portal.log.Infoln("Creating Matrix room. Info source user.MXID:", user.MXID)
-	portal.log.Infoln("Creating Matrix room. Info source portal.Key.JID:", portal.Key.JID)
-
+	portal.log.Debugln("Creating Matrix room: user.MXID=%s, portal.Key.JID=%s", user.MXID, portal.Key.JID)
 	var metadata *skypeExt.GroupInfo
 	if portal.IsPrivateChat() {
 		puppet := portal.bridge.GetPuppetByJID(portal.Key.JID + skypeExt.NewUserSuffix)
@@ -1134,9 +1131,7 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 			}
 			if noRoomTopic {
 				for index, participant := range metadata.Participants {
-					fmt.Println()
-					fmt.Printf("metadata.Participants2: %+v", participant)
-					fmt.Println()
+					portal.log.Debugfln("metadata.Participants2: %+v", participant)
 
 					if participant.JID == user.JID {
 						continue
@@ -1157,6 +1152,9 @@ func (portal *Portal) CreateMatrixRoom(user *User) error {
 				portal.Name = portalName
 			} else {
 				portal.Name = metadata.Name
+				if (user.currentCreateRoomName == portal.Name && portal.Name != "") {
+					return errors.New("It looks like a room is being created in the matrix using command 'create', so there is no need to create a new room here.")
+				}
 			}
 			// portal.Topic = metadata.Topic
 			portal.Topic = ""
