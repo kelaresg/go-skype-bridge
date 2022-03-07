@@ -393,7 +393,7 @@ func (handler *CommandHandler) CommandSync(ce *CommandEvent) {
 
 func syncAll(user *User, create bool) {
 	//ce.Reply("Syncing contacts...")
-	user.syncPuppets(nil)
+	user.syncPuppets(nil, false)
 	//ce.Reply("Syncing chats...")
 	user.syncPortals(nil, create)
 	//sync information from non-contacts in the conversation，
@@ -407,7 +407,8 @@ func syncNonContactInfo(user *User) {
 			nonContacts[personId] = contact
 		}
 	}
-	user.syncPuppets(nonContacts)
+	user.syncPuppets(nonContacts, false)
+	user.syncPuppets(nil, true)
 }
 
 const cmdDeletePortalHelp = `delete-portal - Delete the current portal. If the portal is used by other people, this is limited to bridge admins.`

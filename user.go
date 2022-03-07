@@ -598,7 +598,7 @@ func (user *User) syncPortals(chatMap map[string]skype.Conversation, createAll b
 //	// go user.syncPuppets(contactMap)
 //}
 
-func (user *User) syncPuppets(contacts map[string]skype.Contact) {
+func (user *User) syncPuppets(contacts map[string]skype.Contact, toHomeserver bool) {
 	if contacts == nil {
 		contacts = user.Conn.Store.Contacts
 	}
@@ -619,12 +619,20 @@ func (user *User) syncPuppets(contacts map[string]skype.Contact) {
 		DisplayName: username,
 		PersonId:    user.Conn.UserProfile.Username,
 	}
+	matrixContacts := []string{}
 	for personId, contact := range contacts {
 		user.log.Infoln("Syncing puppet info from contacts", personId, skypeExt.NewUserSuffix)
 		if strings.HasSuffix(personId, skypeExt.NewUserSuffix) {
 			puppet := user.bridge.GetPuppetByJID(personId)
-			puppet.Sync(user, contact)
+			if (!toHomeserver) {
+				puppet.Sync(user, contact)
+			}
+			matrixContacts = append(matrixContacts, string(puppet.MXID))
 		}
+	}
+	customPuppet := user.bridge.GetPuppetByCustomMXID(user.MXID)
+	if customPuppet != nil && customPuppet.CustomIntent() != nil {
+		customPuppet.SetMatrixContacts(matrixContacts)
 	}
 	user.log.Infoln("Finished syncing puppet info from contacts")
 }
