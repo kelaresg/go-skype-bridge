@@ -220,6 +220,10 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 		ce.Reply("**Usage:** `login username password`")
 		return
 	}
+	if ce.User.Conn != nil && ce.User.Conn.LoggedIn == true {
+		ce.Reply("You're already logged into Skype.")
+		return
+	}
 	leavePortals(ce)
 	if !ce.User.Connect(true) {
 		ce.User.log.Debugln("Connect() returned false, assuming error was logged elsewhere and canceling login.")
@@ -234,7 +238,7 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 const cmdLogoutHelp = `logout - Logout from Skype`
 
 func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
-	if ce.User.Conn == nil {
+	if ce.User.Conn == nil || ce.User.Conn.LoggedIn == false {
 		ce.Reply("You're not logged into Skype.")
 		return
 	}
