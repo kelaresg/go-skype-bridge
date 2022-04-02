@@ -283,6 +283,11 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	} else {
 		leavePortals(ce)
 	}
+	var pass string;
+	ret := ce.User.bridge.DB.User.GetPassByMXID(ce.User.MXID, &pass)
+	if ret && pass != "" {
+		ce.Reply("WARNING, your password is stored in database. Use command `remove-password` to remove it.")
+	}
 }
 
 const cmdSavePasswordHelp = `save-password - save user password into database`
@@ -382,6 +387,11 @@ func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 			orgId = strings.TrimSuffix(ce.User.JID, skypeExt.NewUserSuffix)
 		}
 		ce.Reply("You're logged in as @" + username + ", orgid is " + orgId)
+	}
+	var pass string;
+	ret := ce.User.bridge.DB.User.GetPassByMXID(ce.User.MXID, &pass)
+	if ret && pass != "" {
+		ce.Reply("WARNING, your password is stored in database. Use command `remove-password` to remove it.")
 	}
 }
 

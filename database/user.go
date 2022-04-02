@@ -54,6 +54,15 @@ func (uq *UserQuery) GetByJID(userID types.SkypeID) *User {
 	return uq.New().Scan(row)
 }
 
+func (uq *UserQuery) GetPassByMXID(userID id.UserID, password *string) bool {
+	row := uq.db.QueryRow(`SELECT password FROM "user" WHERE mxid=$1`, userID)
+	if row == nil {
+		return false
+	}
+	err := row.Scan(password)
+	return err == nil
+}
+
 func (uq *UserQuery) SetPassByMXID(password string, userID id.UserID) bool {
 	row := uq.db.QueryRow(`UPDATE "user" SET password=$1 WHERE mxid=$2`, password, userID)
 	return row != nil

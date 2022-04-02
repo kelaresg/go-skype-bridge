@@ -396,7 +396,7 @@ func (user *User) monitorSession(ce *CommandEvent) {
 		if x > 0 {
 			user.SetSession(user.Conn.LoginInfo)
 		} else {
-			ce.Reply("Session expired")
+			ce.Reply("Session expired\nStore your password into database with command `save-password` to resolve this issue.")
 			close(user.Conn.Refresh)
 			leavePortals(ce)
 		}
