@@ -101,6 +101,10 @@ func (handler *CommandHandler) CommandMux(ce *CommandEvent) {
 		handler.CommandPing(ce)
 	case "logout":
 		handler.CommandLogout(ce)
+	case "save-password":
+		handler.CommandSavePassword(ce)
+	case "remove-password":
+		handler.CommandRemovePassword(ce)
 	case "login-matrix", "sync", "list", "open", "pm", "invite", "kick", "leave", "join", "create", "share":
 		if !ce.User.HasSession() {
 			ce.Reply("You're not logged in. Use the `login` command to log into Skype.")
@@ -281,6 +285,47 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	}
 }
 
+const cmdSavePasswordHelp = `save-password - save user password into database`
+
+// CommandSavePassword handles save-password command
+func (handler *CommandHandler) CommandSavePassword(ce *CommandEvent) {
+	var ret bool
+	if len(ce.Args) > 0 {
+		ce.Reply("**Usage:** `save-password`")
+		return
+	}
+
+	if ce.User.Conn == nil || ce.User.Conn.LoggedIn == false {
+		ce.Reply("You're not logged into Skype.")
+		return
+	}
+
+	ret = ce.User.bridge.DB.User.SetPassByMXID(ce.User.Conn.LoginInfo.Password, ce.User.MXID)
+	if ret == true {
+		ce.Reply("Your password was successfully saved into database.")
+	} else {
+		ce.Reply("An error occurred while saving your password into database. Try it again.")
+	}
+}
+
+const cmdRemovePasswordHelp = `remove-password - remove user password from database`
+
+// CommandRemovePassword handles remove-password command
+func (handler *CommandHandler) CommandRemovePassword(ce *CommandEvent) {
+	var ret bool
+	if len(ce.Args) > 0 {
+		ce.Reply("**Usage:** `remove-password`")
+		return
+	}
+
+	ret = ce.User.bridge.DB.User.SetPassByMXID("", ce.User.MXID)
+	if ret == true {
+		ce.Reply("Your password was successfully removed from database.")
+	} else {
+		ce.Reply("An error occurred while removing your password from database. Try it again.")
+	}
+}
+
 func leavePortals(ce *CommandEvent) {
 	portals := ce.User.GetPortals()
 	//newPortals := ce.User.GetPortalsNew()
@@ -353,6 +398,8 @@ func (handler *CommandHandler) CommandHelp(ce *CommandEvent) {
 		cmdPrefix + cmdHelpHelp,
 		cmdPrefix + cmdLoginHelp,
 		cmdPrefix + cmdLogoutHelp,
+		cmdPrefix + cmdSavePasswordHelp,
+		cmdPrefix + cmdRemovePasswordHelp,
 		cmdPrefix + cmdPingHelp,
 		//cmdPrefix + cmdLoginMatrixHelp,
 		//cmdPrefix + cmdLogoutMatrixHelp,

@@ -54,6 +54,11 @@ func (uq *UserQuery) GetByJID(userID types.SkypeID) *User {
 	return uq.New().Scan(row)
 }
 
+func (uq *UserQuery) SetPassByMXID(password string, userID id.UserID) bool {
+	row := uq.db.QueryRow(`UPDATE "user" SET password=$1 WHERE mxid=$2`, password, userID)
+	return row != nil
+}
+
 type User struct {
 	db  *Database
 	log log.Logger
