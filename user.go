@@ -294,6 +294,30 @@ func (user *User) Connect(evenIfNoSession bool) bool {
 
 func (user *User) RestoreSession() bool {
 	if user.Session != nil {
+		var password string
+		ret := user.bridge.DB.User.GetPassByMXID(user.MXID, &password)
+		if ret && password != "" {
+			user.log.Debugln("Found password for user " + user.MXID + " in database, trying to login.")
+			ce := &CommandEvent{
+				Bot:     user.bridge.MatrixHandler.cmd.bridge.Bot,
+				Bridge:  user.bridge.MatrixHandler.cmd.bridge,
+				Handler: user.bridge.MatrixHandler.cmd,
+				RoomID:  user.GetManagementRoom(),
+				User:    user,
+			}
+			username := strings.Split(strings.Replace(user.JID, skypeExt.NewUserSuffix, "", 1), ":")
+			strings.Split(user.JID, ":")
+			if username[1] != "" {
+				err := user.Login(ce, username[1], password)
+				if err == nil {
+					user.log.Debugln("User " + username[1] + " successfully connected.")
+					syncAll(user, false)
+				}
+			} else {
+				user.log.Debugln("Unable to get username for user %s , user.JID=%s", user.MXID, user.JID)
+			}
+		}
+
 		//sess, err := user.Conn.RestoreWithSession(*user.Session)
 		//if err == whatsapp.ErrAlreadyLoggedIn {
 		//	return true
