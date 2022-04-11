@@ -419,6 +419,18 @@ func (user *User) monitorSession(ce *CommandEvent) {
 		fmt.Println("monitorSession: ", x)
 		if x > 0 {
 			user.SetSession(user.Conn.LoginInfo)
+		} else if ce.User.Conn.LoginInfo != nil {
+			user.log.Debugln("Session expired for user " + ce.User.Conn.LoginInfo.Username + " trying to relogin.")
+			err := user.Login(ce, ce.User.Conn.LoginInfo.Username, ce.User.Conn.LoginInfo.Password)
+			if err == nil {
+				user.log.Debugln("User " + ce.User.Conn.LoginInfo.Username + " successfully reconnected.")
+				syncAll(user, false)
+			} else {
+				user.log.Debugln("Unable to relogin user %s", ce.User.Conn.LoginInfo.Username)
+				ce.Reply("Session expired and relogin failed.")
+				close(user.Conn.Refresh)
+				leavePortals(ce)
+			}
 		} else {
 			ce.Reply("Session expired\nStore your password into database with command `save-password` to resolve this issue.")
 			close(user.Conn.Refresh)
