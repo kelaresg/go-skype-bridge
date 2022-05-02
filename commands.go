@@ -278,6 +278,7 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		}
 	}
 	ce.Reply("Logged out successfully.")
+	ce.User.Conn.LoginInfo = nil
 	if ce.User.Conn.Refresh != nil {
 		ce.User.Conn.Refresh <- -1
 	} else {

@@ -432,7 +432,6 @@ func (user *User) monitorSession(ce *CommandEvent) {
 				leavePortals(ce)
 			}
 		} else {
-			ce.Reply("Session expired\nStore your password into database with command `save-password` to resolve this issue.")
 			close(user.Conn.Refresh)
 			leavePortals(ce)
 		}
