@@ -295,8 +295,9 @@ func (user *User) Connect(evenIfNoSession bool) bool {
 func (user *User) RestoreSession() bool {
 	if user.Session != nil {
 		var password string
-		ret := user.bridge.DB.User.GetPassByMXID(user.MXID, &password)
-		if ret && password != "" {
+		var username string
+		ret := user.bridge.DB.User.GetCredentialsByMXID(user.MXID, &password, &username)
+		if ret && password != "" && username != "" {
 			user.log.Debugln("Found password for user " + user.MXID + " in database, trying to login.")
 			ce := &CommandEvent{
 				Bot:     user.bridge.MatrixHandler.cmd.bridge.Bot,
@@ -305,17 +306,13 @@ func (user *User) RestoreSession() bool {
 				RoomID:  user.GetManagementRoom(),
 				User:    user,
 			}
-			username := strings.Split(strings.Replace(user.JID, skypeExt.NewUserSuffix, "", 1), ":")
-			strings.Split(user.JID, ":")
-			if username[1] != "" {
-				err := user.Login(ce, username[1], password)
-				if err == nil {
-					user.log.Debugln("User " + username[1] + " successfully connected.")
-					syncAll(user, false)
-				}
-			} else {
-				user.log.Debugln("Unable to get username for user %s , user.JID=%s", user.MXID, user.JID)
+			err := user.Login(ce, username, password)
+			if err == nil {
+				user.log.Debugln("User " + username + " successfully connected.")
+				syncAll(user, false)
 			}
+		} else {
+			user.log.Debugln("An error occured while obtaining username and password for user " + user.MXID + ".")
 		}
 
 		//sess, err := user.Conn.RestoreWithSession(*user.Session)
@@ -432,6 +429,7 @@ func (user *User) monitorSession(ce *CommandEvent) {
 				leavePortals(ce)
 			}
 		} else {
+			ce.Reply("Session expired\nStore your password into database with command `save-password` to resolve this issue.")
 			close(user.Conn.Refresh)
 			leavePortals(ce)
 		}

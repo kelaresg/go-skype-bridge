@@ -284,9 +284,8 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 	} else {
 		leavePortals(ce)
 	}
-	var pass string;
-	ret := ce.User.bridge.DB.User.GetPassByMXID(ce.User.MXID, &pass)
-	if ret && pass != "" {
+	ret := ce.User.bridge.DB.User.GetCredentialsByMXID(ce.User.MXID, &password, &username)
+	if ret && password != "" {
 		ce.Reply("WARNING, your password is stored in database. Use command `remove-password` to remove it.")
 	}
 }
@@ -306,7 +305,7 @@ func (handler *CommandHandler) CommandSavePassword(ce *CommandEvent) {
 		return
 	}
 
-	ret = ce.User.bridge.DB.User.SetPassByMXID(ce.User.Conn.LoginInfo.Password, ce.User.MXID)
+	ret = ce.User.bridge.DB.User.SetCredentialsByMXID(ce.User.Conn.LoginInfo.Password, ce.User.Conn.LoginInfo.Username, ce.User.MXID)
 	if ret == true {
 		ce.Reply("Your password was successfully saved into database.")
 	} else {
@@ -324,7 +323,7 @@ func (handler *CommandHandler) CommandRemovePassword(ce *CommandEvent) {
 		return
 	}
 
-	ret = ce.User.bridge.DB.User.SetPassByMXID("", ce.User.MXID)
+	ret = ce.User.bridge.DB.User.SetCredentialsByMXID("", "", ce.User.MXID)
 	if ret == true {
 		ce.Reply("Your password was successfully removed from database.")
 	} else {
@@ -389,9 +388,10 @@ func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 		}
 		ce.Reply("You're logged in as @" + username + ", orgid is " + orgId)
 	}
-	var pass string;
-	ret := ce.User.bridge.DB.User.GetPassByMXID(ce.User.MXID, &pass)
-	if ret && pass != "" {
+	var password string;
+	var username string;
+	ret := ce.User.bridge.DB.User.GetCredentialsByMXID(ce.User.MXID, &password, &username)
+	if ret && password != "" {
 		ce.Reply("WARNING, your password is stored in database. Use command `remove-password` to remove it.")
 	}
 }
