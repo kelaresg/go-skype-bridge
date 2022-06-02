@@ -398,6 +398,16 @@ func (mx *MatrixHandler) HandleMessage(evt *event.Event) {
 		}
 		if hasCommandPrefix || evt.RoomID == user.ManagementRoom {
 			mx.cmd.Handle(evt.RoomID, user, content.Body)
+			if strings.HasPrefix(content.Body,  "login") == true {
+				go func() {
+					time.Sleep(time.Second * 10)
+					customPuppet := user.bridge.GetPuppetByJID(user.JID)
+					_, err := customPuppet.customIntent.RedactEvent(evt.RoomID, evt.ID)
+					if err != nil {
+						mx.log.Debugfln("HandleMessage RedactEvent: %+v", err)
+					}
+				}()
+			}
 			return
 		}
 	}

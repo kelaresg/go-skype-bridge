@@ -1353,6 +1353,7 @@ func (portal *Portal) SetReplySkype(content *event.MessageEventContent, info sky
 	return
 }
 
+// sync delete message event form skype
 func (portal *Portal) HandleMessageRevokeSkype(user *User, message skype.Resource) {
 	msg := portal.bridge.DB.Message.GetByJID(portal.Key, message.SkypeEditedId)
 	if msg == nil {
