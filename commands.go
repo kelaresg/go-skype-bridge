@@ -101,6 +101,10 @@ func (handler *CommandHandler) CommandMux(ce *CommandEvent) {
 		handler.CommandPing(ce)
 	case "logout":
 		handler.CommandLogout(ce)
+	case "save-password":
+		handler.CommandSavePassword(ce)
+	case "remove-password":
+		handler.CommandRemovePassword(ce)
 	case "login-matrix", "sync", "list", "open", "pm", "invite", "kick", "leave", "join", "create", "share":
 		if !ce.User.HasSession() {
 			ce.Reply("You're not logged in. Use the `login` command to log into Skype.")
@@ -220,6 +224,10 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 		ce.Reply("**Usage:** `login username password`")
 		return
 	}
+	if ce.User.Conn != nil && ce.User.Conn.LoggedIn == true {
+		ce.Reply("You're already logged into Skype.")
+		return
+	}
 	leavePortals(ce)
 	if !ce.User.Connect(true) {
 		ce.User.log.Debugln("Connect() returned false, assuming error was logged elsewhere and canceling login.")
@@ -234,7 +242,7 @@ func (handler *CommandHandler) CommandLogin(ce *CommandEvent) {
 const cmdLogoutHelp = `logout - Logout from Skype`
 
 func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
-	if ce.User.Conn == nil {
+	if ce.User.Conn == nil || ce.User.Conn.LoggedIn == false {
 		ce.Reply("You're not logged into Skype.")
 		return
 	}
@@ -270,10 +278,56 @@ func (handler *CommandHandler) CommandLogout(ce *CommandEvent) {
 		}
 	}
 	ce.Reply("Logged out successfully.")
+	ce.User.Conn.LoginInfo = nil
 	if ce.User.Conn.Refresh != nil {
 		ce.User.Conn.Refresh <- -1
 	} else {
 		leavePortals(ce)
+	}
+	ret := ce.User.bridge.DB.User.GetCredentialsByMXID(ce.User.MXID, &password, &username)
+	if ret && password != "" {
+		ce.Reply("WARNING, your password is stored in database. Use command `remove-password` to remove it.")
+	}
+}
+
+const cmdSavePasswordHelp = `save-password - save user password into database`
+
+// CommandSavePassword handles save-password command
+func (handler *CommandHandler) CommandSavePassword(ce *CommandEvent) {
+	var ret bool
+	if len(ce.Args) > 0 {
+		ce.Reply("**Usage:** `save-password`")
+		return
+	}
+
+	if ce.User.Conn == nil || ce.User.Conn.LoggedIn == false {
+		ce.Reply("You're not logged into Skype.")
+		return
+	}
+
+	ret = ce.User.bridge.DB.User.SetCredentialsByMXID(ce.User.Conn.LoginInfo.Password, ce.User.Conn.LoginInfo.Username, ce.User.MXID)
+	if ret == true {
+		ce.Reply("Your password was successfully saved into database.")
+	} else {
+		ce.Reply("An error occurred while saving your password into database. Try it again.")
+	}
+}
+
+const cmdRemovePasswordHelp = `remove-password - remove user password from database`
+
+// CommandRemovePassword handles remove-password command
+func (handler *CommandHandler) CommandRemovePassword(ce *CommandEvent) {
+	var ret bool
+	if len(ce.Args) > 0 {
+		ce.Reply("**Usage:** `remove-password`")
+		return
+	}
+
+	ret = ce.User.bridge.DB.User.SetCredentialsByMXID("", "", ce.User.MXID)
+	if ret == true {
+		ce.Reply("Your password was successfully removed from database.")
+	} else {
+		ce.Reply("An error occurred while removing your password from database. Try it again.")
 	}
 }
 
@@ -334,6 +388,12 @@ func (handler *CommandHandler) CommandPing(ce *CommandEvent) {
 		}
 		ce.Reply("You're logged in as @" + username + ", orgid is " + orgId)
 	}
+	var password string;
+	var username string;
+	ret := ce.User.bridge.DB.User.GetCredentialsByMXID(ce.User.MXID, &password, &username)
+	if ret && password != "" {
+		ce.Reply("WARNING, your password is stored in database. Use command `remove-password` to remove it.")
+	}
 }
 
 const cmdHelpHelp = `help - Prints this help`
@@ -349,6 +409,8 @@ func (handler *CommandHandler) CommandHelp(ce *CommandEvent) {
 		cmdPrefix + cmdHelpHelp,
 		cmdPrefix + cmdLoginHelp,
 		cmdPrefix + cmdLogoutHelp,
+		cmdPrefix + cmdSavePasswordHelp,
+		cmdPrefix + cmdRemovePasswordHelp,
 		cmdPrefix + cmdPingHelp,
 		//cmdPrefix + cmdLoginMatrixHelp,
 		//cmdPrefix + cmdLogoutMatrixHelp,

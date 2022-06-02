@@ -294,6 +294,27 @@ func (user *User) Connect(evenIfNoSession bool) bool {
 
 func (user *User) RestoreSession() bool {
 	if user.Session != nil {
+		var password string
+		var username string
+		ret := user.bridge.DB.User.GetCredentialsByMXID(user.MXID, &password, &username)
+		if ret && password != "" && username != "" {
+			user.log.Debugln("Found password for user " + user.MXID + " in database, trying to login.")
+			ce := &CommandEvent{
+				Bot:     user.bridge.MatrixHandler.cmd.bridge.Bot,
+				Bridge:  user.bridge.MatrixHandler.cmd.bridge,
+				Handler: user.bridge.MatrixHandler.cmd,
+				RoomID:  user.GetManagementRoom(),
+				User:    user,
+			}
+			err := user.Login(ce, username, password)
+			if err == nil {
+				user.log.Debugln("User " + username + " successfully connected.")
+				syncAll(user, false)
+			}
+		} else {
+			user.log.Debugln("An error occured while obtaining username and password for user " + user.MXID + ".")
+		}
+
 		//sess, err := user.Conn.RestoreWithSession(*user.Session)
 		//if err == whatsapp.ErrAlreadyLoggedIn {
 		//	return true
@@ -395,8 +416,20 @@ func (user *User) monitorSession(ce *CommandEvent) {
 		fmt.Println("monitorSession: ", x)
 		if x > 0 {
 			user.SetSession(user.Conn.LoginInfo)
+		} else if ce.User.Conn.LoginInfo != nil {
+			user.log.Debugln("Session expired for user " + ce.User.Conn.LoginInfo.Username + " trying to relogin.")
+			err := user.Login(ce, ce.User.Conn.LoginInfo.Username, ce.User.Conn.LoginInfo.Password)
+			if err == nil {
+				user.log.Debugln("User " + ce.User.Conn.LoginInfo.Username + " successfully reconnected.")
+				syncAll(user, false)
+			} else {
+				user.log.Debugln("Unable to relogin user %s", ce.User.Conn.LoginInfo.Username)
+				ce.Reply("Session expired and relogin failed.")
+				close(user.Conn.Refresh)
+				leavePortals(ce)
+			}
 		} else {
-			ce.Reply("Session expired")
+			ce.Reply("Session expired\nStore your password into database with command `save-password` to resolve this issue.")
 			close(user.Conn.Refresh)
 			leavePortals(ce)
 		}
