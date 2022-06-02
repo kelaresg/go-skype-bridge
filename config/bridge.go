@@ -40,6 +40,7 @@ type BridgeConfig struct {
 	RecoverChatSync      int    `yaml:"recovery_chat_sync_count"`
 	RecoverHistory       bool   `yaml:"recovery_history_backfill"`
 	SyncChatMaxAge       uint64 `yaml:"sync_max_chat_age"`
+	SyncContact          bool   `yaml:"sync_contact"`
 
 	SyncWithCustomPuppets bool   `yaml:"sync_with_custom_puppets"`
 
@@ -101,6 +102,7 @@ func (bc *BridgeConfig) setDefaults() {
 	bc.RecoverChatSync = -1
 	bc.RecoverHistory = true
 	bc.SyncChatMaxAge = 259200
+	bc.SyncContact = false
 
 	bc.SyncWithCustomPuppets = true
 

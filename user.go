@@ -630,9 +630,11 @@ func (user *User) syncPuppets(contacts map[string]skype.Contact, toHomeserver bo
 			matrixContacts = append(matrixContacts, string(puppet.MXID))
 		}
 	}
-	customPuppet := user.bridge.GetPuppetByCustomMXID(user.MXID)
-	if customPuppet != nil && customPuppet.CustomIntent() != nil {
-		customPuppet.SetMatrixContacts(matrixContacts)
+	if user.bridge.Config.Bridge.SyncContact {
+		customPuppet := user.bridge.GetPuppetByCustomMXID(user.MXID)
+		if customPuppet != nil && customPuppet.CustomIntent() != nil {
+			customPuppet.SetMatrixContacts(matrixContacts)
+		}
 	}
 	user.log.Infoln("Finished syncing puppet info from contacts")
 }
