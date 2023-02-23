@@ -382,7 +382,10 @@ func (user *User) Login(ce *CommandEvent, name string, password string) (err err
 	} else {
 		orgId = strings.TrimSuffix(user.JID, skypeExt.NewUserSuffix)
 	}
-	ce.Reply("Successfully logged in as @" + username + ", orgid is " + orgId)
+
+	if user.bridge.Config.Bridge.ReportConnectionSuccess {
+		ce.Reply("Successfully logged in as @" + username + ", orgid is " + orgId)
+	}
 
 	user.Conn.Subscribes() // subscribe basic event
 	err = user.Conn.ContactList(user.Conn.UserProfile.Username)
